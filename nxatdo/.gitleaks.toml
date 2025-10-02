@@ -1,0 +1,12 @@
+title = "Custom Gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Ignore checksum annotations"
+regexTarget = "line"
+regexes = [
+    '''^\s+checksum/[^:]+: .*$''',
+    '''resolv.conf''',
+]

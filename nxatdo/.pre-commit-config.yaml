@@ -1,0 +1,125 @@
+---
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-ast
+      - id: check-builtin-literals
+      - id: check-case-conflict
+      - id: check-docstring-first
+      - id: check-executables-have-shebangs
+
+      # [ERROR] `check-illegal-windows-names` is not present in repository https://github.com/pre-commit/pre-commit-hooks.  Typo? Perhaps it is introduced in a newer version?  Often `pre-commit autoupdate` fixes this.
+      # - id: check-illegal-windows-names
+
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-shebang-scripts-are-executable
+      - id: check-symlinks
+      - id: check-toml
+      # - id: check-vcs-permalinks
+      - id: check-xml
+      - id: check-yaml
+        args: [ --allow-multiple-documents ]
+      - id: debug-statements
+      - id: destroyed-symlinks
+
+      # Commenting out because it throws this error constantly:
+      # AWS keys were found in the configured credential files and environment variables.
+      # Please ensure you have the correct setting for --credentials-file
+      # - id: detect-aws-credentials
+
+      - id: detect-private-key
+      - id: double-quote-string-fixer
+      - id: end-of-file-fixer
+      - id: file-contents-sorter
+      - id: fix-byte-order-marker
+      # - id: fix-encoding-pragma
+      # - id: forbid-new-submodules
+      # - id: forbid-submodules
+      - id: mixed-line-ending
+      - id: name-tests-test
+      # - id: no-commit-to-branch
+      #   args: [--branch, staging, --branch, main, --branch, develop]
+
+      # This changes too much: lockfiles, config files, etc. Too much drama.
+      # - id: pretty-format-json
+      #   args: [ --autofix, --no-ensure-ascii ]
+
+      - id: requirements-txt-fixer
+      # - id: sort-simple-yaml
+      - id: trailing-whitespace
+  - repo: https://github.com/koalaman/shellcheck-precommit
+    rev: v0.11.0
+    hooks:
+      - id: shellcheck
+  - repo: https://github.com/tofuutils/pre-commit-opentofu
+    rev: v2.2.1
+    hooks:
+
+      # Too much drama
+      # - id: tofu_checkov
+      #   args:
+      #     - --args=--download-external-modules true
+      #     - --args=--quiet
+
+      # - id: infracost_breakdown
+
+      - id: tofu_docs
+      - id: tofu_docs_without_aggregate_type_defaults
+      - id: tofu_fmt
+      - id: tofu_providers_lock
+      - id: tofu_tflint
+      # I cannot fucking figure out how to make this thing ignore .terraform directories. I don't need to know about the dozens of security issues with modules that I don't control.
+      # - id: tofu_trivy
+      #   exclude: '.*\.terraform/.*'
+      - id: tofu_validate
+      # - id: terragrunt_fmt
+      # - id: terragrunt_validate
+      # - id: tofu_wrapper_module_for_each # Uses deprecated hcledit binary.
+      # - id: terrascan # Error: grep: warning: stray \ before /
+      - id: tfupdate
+  - repo: https://github.com/adrienverge/yamllint.git
+    rev: v1.37.1
+    hooks:
+      - id: yamllint
+        args:
+          - -d
+          - '{rules: {line-length: disable}}'
+  - repo: https://github.com/mrtazz/checkmake.git
+    rev: 0.2.2
+    hooks:
+    - id: checkmake
+
+# Problem:
+# An unexpected error has occurred: CalledProcessError: command: ('/usr/bin/go', 'install', './...')
+# Solution:
+# https://github.com/pre-commit/pre-commit/issues/2722#issuecomment-1527611050
+# Run this again in your git repo: pre-commit install-hooks
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.28.0
+    hooks:
+      - id: gitleaks
+
+  - repo: https://github.com/jmfernandez/pre-commit_mirrors-actionlint
+    rev: "v1.7.1"
+    hooks:
+      - id: actionlint
+
+  - repo: https://github.com/executablebooks/mdformat
+    rev: 0.7.22
+    hooks:
+      - id: mdformat
+        additional_dependencies:
+          - mdformat-gfm
+          - mdformat-toc
+          - mdformat-black
+        # mdformat fights with terraform_docs
+        exclude: README.m(ark)?d(own)?
+  - repo: https://github.com/zizmorcore/zizmor-pre-commit
+    rev: v1.12.1
+    hooks:
+    - id: zizmor
