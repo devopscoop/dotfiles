@@ -1,0 +1,36 @@
+[user]
+	signingkey = 7C998A2D26C760E0
+
+[commit]
+	gpgsign = true
+
+[init]
+	defaultBranch = main
+
+[pull]
+	rebase = false
+
+[alias]
+
+	# Check out origin default branch (not for use with repos that don't have a remote named "origin")
+	checkout-origin-default-branch = "!git checkout $(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@')"
+
+	# Pull all remote main branches, and merge them with local main.
+	pull-all-main = "!git checkout main && git fetch --all && for remote in $(git remote); do git merge ${remote}/main; done"
+
+	# Push all branches to all remotes
+	push-all-branches = "!for remote in $(git remote); do git push ${remote} --all; done"
+
+	# Delete merged branches. Do a git checkout and git pull on whichever branch you want to delete the merged branches of...
+	# delete-merged-branches = "!git fetch -p --all && for branch in $(git branch | sed '/^\*/d'); do git branch -d ${branch}; done"
+	delete-merged-branches = "!git fetch -p --all && for branch in $(git branch --merged | grep -v '\\*' | grep -v 'main' | awk '{print $1}'); do git branch -d \"$branch\"; done"
+
+# https://github.com/getsops/sops?tab=readme-ov-file#48showing-diffs-in-cleartext-in-git
+[diff "sopsdiffer"]
+	textconv = "sops decrypt"
+
+[submodule]
+	recurse = true
+
+[push]
+	autoSetupRemote = true
