@@ -36,6 +36,7 @@ PS1='[\w $(__git_ps1 "(%s)") $(kube_ps1)]\$ '
 source <(kubectl completion bash)
 alias k=kubectl
 complete -o default -F __start_kubectl k
+alias kns='kubectl config set-context --current --namespace'
 
 # https://krew.sigs.k8s.io/docs/user-guide/setup/install/
 export PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH"
@@ -65,3 +66,5 @@ source <(k0s completion bash)
 
 # Use this when you log into this user via the console
 # eval "$(ssh-agent -s)"
+[[ -f /usr/share/bash-preexec/bash-preexec.sh ]] && source /usr/share/bash-preexec/bash-preexec.sh
+eval "$(atuin init bash --disable-up-arrow)"
