@@ -57,7 +57,7 @@ repos:
     hooks:
       - id: shellcheck
   - repo: https://github.com/tofuutils/pre-commit-opentofu
-    rev: v2.2.1
+    rev: v2.2.2
     hooks:
 
       # Too much drama
@@ -110,7 +110,7 @@ repos:
       - id: actionlint
 
   - repo: https://github.com/executablebooks/mdformat
-    rev: 0.7.22
+    rev: 1.0.0
     hooks:
       - id: mdformat
         additional_dependencies:
@@ -120,6 +120,6 @@ repos:
         # mdformat fights with terraform_docs
         exclude: README.m(ark)?d(own)?
   - repo: https://github.com/zizmorcore/zizmor-pre-commit
-    rev: v1.12.1
+    rev: v1.16.0
     hooks:
     - id: zizmor

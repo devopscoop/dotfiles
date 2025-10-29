@@ -34,3 +34,5 @@
 
 [push]
 	autoSetupRemote = true
+[log]
+	showSignature = true
