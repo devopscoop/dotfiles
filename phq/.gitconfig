@@ -1,5 +1,4 @@
 # I have multiple identities across multiple git platforms and organizations, so I can't use a global user config.
-#
 # [user]
 # 	signingkey = REDACTED
 # 	email = REDACTED
@@ -20,10 +19,10 @@
 	checkout-origin-default-branch = "!git checkout $(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@')"
 
 	# Pull all remote main branches, and merge them with local main.
-	pull-all-main = "!git checkout main && git fetch --all && for remote in $(git remote); do git merge ${remote}/main; done"
+	pull-all-main = "!git checkout main && git fetch --all && for remote in $(git remote | sed '/^upstream$/d'); do git merge ${remote}/main; done"
 
 	# Push all branches to all remotes
-	push-all-branches = "!for remote in $(git remote); do git push ${remote} --all; done"
+	push-all-branches = "!for remote in $(git remote | sed '/^upstream$/d'); do git push ${remote} --all; done"
 
 	# Delete merged branches. Do a git checkout and git pull on whichever branch you want to delete the merged branches of...
 	# delete-merged-branches = "!git fetch -p --all && for branch in $(git branch | sed '/^\*/d'); do git branch -d ${branch}; done"
