@@ -37,5 +37,19 @@
 
 [push]
 	autoSetupRemote = true
+
 [log]
 	showSignature = true
+
+[re.sonny.Commit]
+	title-length-hint=50
+	body-length-wrap=72
+	auto-capitalize-title=true
+
+[credential "https://github.com"]
+	helper = 
+	helper = !/usr/bin/gh auth git-credential
+
+[credential "https://gist.github.com"]
+	helper = 
+	helper = !/usr/bin/gh auth git-credential
