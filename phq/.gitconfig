@@ -1,7 +1,9 @@
-[user]
-	signingkey = 7C998A2D26C760E0
-	email = nni9orpt@anonaddy.me
-	name = nni9orpt@anonaddy.me
+# I have multiple identities across multiple git platforms and organizations, so I can't use a global user config.
+#
+# [user]
+# 	signingkey = REDACTED
+# 	email = REDACTED
+# 	name = REDACTED
 
 [commit]
 	gpgsign = true
