@@ -14,6 +14,9 @@ alias codium='/opt/vscodium-bin/codium --enable-features=UseOzonePlatform,Waylan
 alias difff='diff -w -W 240 -y --color=always --suppress-common-lines'
 alias awslogin="okta-aws-cli web -s 42300 --cache-access-token --all-profiles"
 alias gen-rand-username=$'openssl rand -base64 13 | sed \'s/[^a-z]//g\''
+alias local-ai='sudo docker run --rm -ti --name local-ai -p 8080:8080 \
+  -v "${HOME}/models":/models \
+  localai/localai:latest-aio-gpu-intel'
 
 export EDITOR=vim
 export PATH="${PATH}:${HOME}/bin:${HOME}/.local/bin"
