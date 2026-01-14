@@ -56,18 +56,20 @@ source <(flux completion bash)
 [[ -f /usr/share/bash-preexec/bash-preexec.sh ]] && source /usr/share/bash-preexec/bash-preexec.sh
 eval "$(atuin init bash --disable-up-arrow)"
 
-# source "${HOME}/gitlab.com/dedevsecops/bin/git_lib.sh"
-
 # https://cli.github.com/manual/gh_completion
 eval "$(gh completion -s bash)"
 
 # Do this once to use Gnome Keyring seahorse with ssh
 # systemctl --user enable gcr-ssh-agent.socket
+# systemctl --user start gcr-ssh-agent.socket
+
+# https://wiki.archlinux.org/title/SSH_keys
+# I can't fucking get GNOME Keyring Seahorse Whateverthefuck working For Cosmic Desktop, so I'm trying this shit:
+# systemctl --user enable ssh-agent.service
+# systemctl --user start ssh-agent.service
+# export SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/ssh-agent.socket"
 
 # https://docs.k0sproject.io/stable/shell-completion/
 source <(k0s completion bash)
 
-# Use this when you log into this user via the console
-# eval "$(ssh-agent -s)"
-[[ -f /usr/share/bash-preexec/bash-preexec.sh ]] && source /usr/share/bash-preexec/bash-preexec.sh
-eval "$(atuin init bash --disable-up-arrow)"
+alias codium='/opt/vscodium-bin/codium --enable-features=UseOzonePlatform,WaylandWindowDecorations --ozone-platform=wayland'
