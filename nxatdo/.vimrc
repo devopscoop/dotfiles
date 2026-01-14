@@ -10,3 +10,4 @@ set softtabstop=2
 set statusline+=%F
 syntax on
 set viminfo='100,h
+set background=dark
