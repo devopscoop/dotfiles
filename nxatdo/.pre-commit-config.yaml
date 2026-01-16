@@ -83,14 +83,14 @@ repos:
       # - id: terrascan # Error: grep: warning: stray \ before /
       - id: tfupdate
   - repo: https://github.com/adrienverge/yamllint.git
-    rev: v1.37.1
+    rev: v1.38.0
     hooks:
       - id: yamllint
         args:
           - -d
           - '{rules: {line-length: disable}}'
   - repo: https://github.com/mrtazz/checkmake.git
-    rev: 0.2.2
+    rev: v0.3.0
     hooks:
     - id: checkmake
 
@@ -100,12 +100,12 @@ repos:
 # https://github.com/pre-commit/pre-commit/issues/2722#issuecomment-1527611050
 # Run this again in your git repo: pre-commit install-hooks
   - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.28.0
+    rev: v8.30.0
     hooks:
       - id: gitleaks
 
   - repo: https://github.com/jmfernandez/pre-commit_mirrors-actionlint
-    rev: "v1.7.1"
+    rev: "v1.7.9"
     hooks:
       - id: actionlint
 
@@ -120,6 +120,6 @@ repos:
         # mdformat fights with terraform_docs
         exclude: README.m(ark)?d(own)?
   - repo: https://github.com/zizmorcore/zizmor-pre-commit
-    rev: v1.16.0
+    rev: v1.20.0
     hooks:
     - id: zizmor
