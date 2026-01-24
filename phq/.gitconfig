@@ -1,8 +1,7 @@
-# I have multiple identities across multiple git platforms and organizations, so I can't use a global user config.
-# [user]
-# 	signingkey = REDACTED
-# 	email = REDACTED
-# 	name = REDACTED
+[user]
+	signingkey = BF4CDF6668A6BCF5364A0DC23423A1B4F99D6923
+	email = r01otvm0@addy.to
+	name = r01otvm0
 
 [commit]
 	gpgsign = true
@@ -47,9 +46,9 @@
 	auto-capitalize-title=true
 
 [credential "https://github.com"]
-	helper = 
+	helper =
 	helper = !/usr/bin/gh auth git-credential
 
 [credential "https://gist.github.com"]
-	helper = 
+	helper =
 	helper = !/usr/bin/gh auth git-credential
