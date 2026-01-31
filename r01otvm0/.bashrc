@@ -19,7 +19,7 @@ alias local-ai='sudo docker run --rm -ti --name local-ai -p 8080:8080 \
   localai/localai:latest-aio-gpu-intel'
 
 export EDITOR=vim
-export PATH="${PATH}:${HOME}/bin:${HOME}/.local/bin"
+export PATH="${PATH}:${HOME}/bin:${HOME}/.local/bin:${HOME}/go/bin"
 
 # https://wiki.archlinux.org/title/Git
 source /usr/share/git/completion/git-prompt.sh
@@ -73,3 +73,8 @@ eval "$(gh completion -s bash)"
 source <(k0s completion bash)
 
 alias codium='/opt/vscodium-bin/codium --enable-features=UseOzonePlatform,WaylandWindowDecorations --ozone-platform=wayland'
+
+# Added by LM Studio CLI (lms)
+export PATH="$PATH:/home/user/.lmstudio/bin"
+# End of LM Studio CLI section
+
