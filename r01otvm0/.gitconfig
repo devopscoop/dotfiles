@@ -1,7 +1,7 @@
 [user]
-	signingkey = BF4CDF6668A6BCF5364A0DC23423A1B4F99D6923
-	email = r01otvm0@addy.to
-	name = r01otvm0
+	signingkey = DE2588117E3C58F1C55149B2AEA543DB863D7D2B
+	email = 3uzbcqje@addy.to
+	name = 3uzbcqje
 
 [commit]
 	gpgsign = true
@@ -52,3 +52,8 @@
 [credential "https://gist.github.com"]
 	helper =
 	helper = !/usr/bin/gh auth git-credential
+[filter "lfs"]
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+	required = true

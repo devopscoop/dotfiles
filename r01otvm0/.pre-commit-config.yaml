@@ -52,10 +52,10 @@ repos:
       - id: requirements-txt-fixer
       # - id: sort-simple-yaml
       - id: trailing-whitespace
-  - repo: https://github.com/koalaman/shellcheck-precommit
-    rev: v0.11.0
-    hooks:
-      - id: shellcheck
+  # - repo: https://github.com/koalaman/shellcheck-precommit
+  #   rev: v0.11.0
+  #   hooks:
+  #     - id: shellcheck
   - repo: https://github.com/tofuutils/pre-commit-opentofu
     rev: v2.2.2
     hooks:
