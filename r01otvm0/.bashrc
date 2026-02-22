@@ -78,3 +78,5 @@ alias codium='/opt/vscodium-bin/codium --enable-features=UseOzonePlatform,Waylan
 export PATH="$PATH:/home/user/.lmstudio/bin"
 # End of LM Studio CLI section
 
+# Added by Claude Code so it can run sudo
+export SUDO_ASKPASS=/usr/lib/seahorse/ssh-askpass
