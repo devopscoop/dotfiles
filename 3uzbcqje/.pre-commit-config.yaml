@@ -81,7 +81,7 @@ repos:
       # - id: terragrunt_validate
       # - id: tofu_wrapper_module_for_each # Uses deprecated hcledit binary.
       # - id: terrascan # Error: grep: warning: stray \ before /
-      - id: tfupdate
+      # - id: tfupdate # aur/tfupdate-bin 0.8.5-2 (+2 0.12) (Out-of-date: 2025-11-04)
   - repo: https://github.com/adrienverge/yamllint.git
     rev: v1.38.0
     hooks:
