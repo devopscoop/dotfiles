@@ -74,3 +74,10 @@ eval "$(gh completion -s bash)"
 source <(k0s completion bash)
 
 alias codium='/opt/vscodium-bin/codium --enable-features=UseOzonePlatform,WaylandWindowDecorations --ozone-platform=wayland'
+
+# Added by LM Studio CLI (lms)
+export PATH="$PATH:/home/user/.lmstudio/bin"
+# End of LM Studio CLI section
+
+# Added by Claude Code so it can run sudo
+export SUDO_ASKPASS=/usr/lib/seahorse/ssh-askpass
