@@ -12,7 +12,7 @@ alias nocomment=$'sed -E \'/^[ \t]*#/d;/^[ \t]*$/d;\''
 alias grepp='grep -rIi --exclude-dir .git --exclude-dir node_modules --exclude-dir .terraform'
 alias codium='/opt/vscodium-bin/codium --enable-features=UseOzonePlatform,WaylandWindowDecorations --ozone-platform=wayland'
 alias difff='diff -w -W 240 -y --color=always --suppress-common-lines'
-alias awslogin="okta-aws-cli web --all-profiles --open-browser --aws-session-duration 42300 --oidc-client-id 0oa1o4hf5l3zhPrXL358 --org-domain dfinity.okta.com"
+alias awslogin="okta-aws-cli web --all-profiles --open-browser --aws-session-duration 42300 --oidc-client-id 0oa1o4hf5l3zhPrXL358 --org-domain dfinity.okta.com --write-aws-credentials"
 alias gen-rand-username=$'openssl rand -base64 13 | sed \'s/[^a-z]//g\''
 alias local-ai='sudo docker run --rm -ti --name local-ai -p 8080:8080 \
   -v "${HOME}/models":/models \
