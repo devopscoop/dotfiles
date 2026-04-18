@@ -19,6 +19,12 @@ alias local-ai='sudo docker run --rm -ti --name local-ai -p 8080:8080 \
   -v "${HOME}/backends":/backends \
   localai/localai:latest-aio-gpu-intel'
 
+# Useful for generating profile pictures
+# https://jdenticon.com/get-started/cli.html
+jdenticon() {
+  npx jdenticon "${1}" --size 256 --output "${1}.png"
+}
+
 export EDITOR=vim
 export PATH="${PATH}:${HOME}/bin:${HOME}/.local/bin:${HOME}/go/bin"
 
