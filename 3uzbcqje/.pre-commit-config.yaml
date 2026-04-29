@@ -1,4 +1,6 @@
 ---
+# Install with:
+# pre-commit install --config /home/user/git/devopscoop/dotfiles/3uzbcqje/.pre-commit-config.yaml
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
 repos:
@@ -57,7 +59,7 @@ repos:
   #   hooks:
   #     - id: shellcheck
   - repo: https://github.com/tofuutils/pre-commit-opentofu
-    rev: v2.2.2
+    rev: v2.3.0
     hooks:
 
       # Too much drama
@@ -120,6 +122,6 @@ repos:
         # mdformat fights with terraform_docs
         exclude: README.m(ark)?d(own)?
   - repo: https://github.com/zizmorcore/zizmor-pre-commit
-    rev: v1.20.0
+    rev: v1.24.1
     hooks:
     - id: zizmor
