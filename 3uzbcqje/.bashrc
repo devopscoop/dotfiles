@@ -87,3 +87,9 @@ export PATH="$PATH:/home/user/.lmstudio/bin"
 
 # Added by Claude Code so it can run sudo
 export SUDO_ASKPASS=/usr/lib/seahorse/ssh-askpass
+
+# Adding a function to set the title of a terminal window
+function set-title() {
+    TITLE="\e]2;$@\a"
+    PS1="${PS1}${TITLE}"
+}
