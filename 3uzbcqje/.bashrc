@@ -28,19 +28,18 @@ jdenticon() {
 export EDITOR=vim
 export PATH="${PATH}:${HOME}/bin:${HOME}/.local/bin:${HOME}/go/bin"
 
-# https://wiki.archlinux.org/title/Git
-source /usr/share/git/completion/git-prompt.sh
-export GIT_PS1_SHOWCOLORHINTS=true
-export GIT_PS1_SHOWCONFLICTSTATE=yes
-export GIT_PS1_SHOWDIRTYSTATE=true
-export GIT_PS1_SHOWSTASHSTATE=true
-export GIT_PS1_SHOWUNTRACKEDFILES=true
-export GIT_PS1_SHOWUPSTREAM=auto
-
-source '/opt/kube-ps1/kube-ps1.sh'
-
+# Commenting out while trying starship
 # Adding git and kube stuff to prompt
-PS1='[\w $(__git_ps1 "(%s)") $(kube_ps1)]\$ '
+# https://wiki.archlinux.org/title/Git
+# source /usr/share/git/completion/git-prompt.sh
+# export GIT_PS1_SHOWCOLORHINTS=true
+# export GIT_PS1_SHOWCONFLICTSTATE=yes
+# export GIT_PS1_SHOWDIRTYSTATE=true
+# export GIT_PS1_SHOWSTASHSTATE=true
+# export GIT_PS1_SHOWUNTRACKEDFILES=true
+# export GIT_PS1_SHOWUPSTREAM=auto
+# source '/opt/kube-ps1/kube-ps1.sh'
+# PS1='[\w $(__git_ps1 "(%s)") $(kube_ps1)]\$ '
 
 # kubectl
 source <(kubectl completion bash)
@@ -93,3 +92,11 @@ function set-title() {
     TITLE="\e]2;$@\a"
     PS1="${PS1}${TITLE}"
 }
+
+# https://direnv.net/docs/hook.html
+eval "$(direnv hook bash)"
+
+# https://starship.rs/
+# Add some presets (one time)
+# starship preset nerd-font-symbols -o ~/.config/starship.toml
+eval "$(starship init bash)"

@@ -21,6 +21,9 @@
 	pull-all-main = "!git checkout main && git fetch --all && for remote in $(git remote | sed '/^upstream$/d'); do git merge ${remote}/main; done"
 
 	# Push all branches to all remotes
+	push-all-main = "!for remote in $(git remote | sed '/^upstream$/d'); do git push ${remote} main; done"
+
+	# Push all branches to all remotes
 	push-all-branches = "!for remote in $(git remote | sed '/^upstream$/d'); do git push ${remote} --all; done"
 
 	# Delete merged branches. Do a git checkout and git pull on whichever branch you want to delete the merged branches of...
