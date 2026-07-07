@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 
-brew install bash
+set -euo pipefail
 
-# pinentry-mac: native macOS passphrase dialog + Keychain for GPG signing.
-# Configured in .bashrc's Darwin section.
-brew install pinentry-mac
+DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Install everything captured in the Brewfile (formulae, casks, and taps).
+# Regenerate the Brewfile from the current machine with:
+#   brew bundle dump --force --file=Brewfile
+brew bundle install --file="$DOTFILES_DIR/Brewfile"
 
 # Add brew's bash to allowed shells
 echo "$(brew --prefix)/bin/bash" | sudo tee -a /etc/shells

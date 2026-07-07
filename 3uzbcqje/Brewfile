@@ -1,0 +1,53 @@
+tap "fluxcd/tap"
+# Improved shell history for zsh, bash, fish and nushell
+brew "atuin"
+# Securely manage AWS API credentials using AWS SSO
+brew "aws-sso-cli"
+# Official Amazon AWS command-line interface
+brew "awscli"
+# Bourne-Again SHell, a UNIX command interpreter
+brew "bash"
+# Preexec and precmd functions for Bash (like Zsh)
+brew "bash-preexec"
+# GNU File, Shell, and Text utilities
+brew "coreutils"
+# Get a file from an HTTP, HTTPS or FTP server
+brew "curl"
+# Load/unload environment variables based on $PWD
+brew "direnv"
+# Collection of GNU find, xargs, and locate
+brew "findutils"
+# GNU awk utility
+brew "gawk"
+# GitHub command-line tool
+brew "gh"
+# Distributed revision control system
+brew "git"
+# GNU implementation of the famous stream editor
+brew "gnu-sed"
+# GNU version of the tar archiving utility
+brew "gnu-tar"
+# GNU Privacy Guard (OpenPGP)
+brew "gnupg"
+# GNU grep, egrep and fgrep
+brew "grep"
+# Kubernetes command-line interface
+brew "kubernetes-cli"
+# Pinentry for GPG on Mac
+brew "pinentry-mac"
+# Cross-shell prompt for astronauts
+brew "starship"
+# Vi 'workalike' with many additional features
+brew "vim"
+# Internet file retriever
+brew "wget"
+# Flux CLI
+brew "fluxcd/tap/flux", trusted: true
+# Terminal-based AI coding assistant
+cask "claude-code"
+# Web browser
+cask "firefox"
+# Terminal emulator that uses platform-native UI and GPU acceleration
+cask "ghostty"
+# Team communication and collaboration software
+cask "slack"
