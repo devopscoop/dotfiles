@@ -3,8 +3,10 @@
 # install.sh — symlink the dotfiles in this repo into $HOME.
 #
 # For each tracked dotfile (including nested ones like .config/ghostty/config),
-# creates a symlink at the matching path under $HOME. Existing real files are
-# backed up to <file>.bak; existing correct symlinks are left alone.
+# creates a symlink at the matching path under $HOME. Anything already present
+# at the destination (a real file, dir, or a symlink pointing elsewhere) is
+# left untouched and skipped; only correct existing symlinks are treated as
+# already done. This script never clobbers existing files.
 #
 # Usage:
 #   ./install.sh          # create the symlinks
@@ -40,24 +42,19 @@ link_one() {
         return
     fi
 
+    # Anything already in the way (real file, dir, or a symlink pointing
+    # elsewhere) is left untouched — we never clobber existing files.
+    if [[ -e "$dst" || -L "$dst" ]]; then
+        echo "skip $rel (exists, not clobbering) -> $dst"
+        return
+    fi
+
     if [[ $DRY_RUN -eq 1 ]]; then
-        if [[ -e "$dst" || -L "$dst" ]]; then
-            echo "would back up $dst and link -> $src"
-        else
-            echo "would link $rel -> $src"
-        fi
+        echo "would link $rel -> $src"
         return
     fi
 
     mkdir -p "$(dirname "$dst")"
-
-    # Back up anything real (or a stale symlink) that's in the way.
-    if [[ -e "$dst" || -L "$dst" ]]; then
-        local backup="$dst.bak"
-        echo "back up $dst -> $backup"
-        mv "$dst" "$backup"
-    fi
-
     ln -s "$src" "$dst"
     echo "link $rel -> $src"
 }
