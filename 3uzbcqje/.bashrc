@@ -5,6 +5,31 @@
 # If not running interactively, don't do anything
 [[ $- != *i* ]] && return
 
+# Fix macOS shitfuckery
+if [[ "$(uname)" == "Darwin" ]]; then
+  export PATH="$(brew --prefix)/opt/coreutils/libexec/gnubin:$PATH"
+  export PATH="$(brew --prefix)/opt/gnu-sed/libexec/gnubin:$PATH"
+  export PATH="$(brew --prefix)/opt/grep/libexec/gnubin:$PATH"
+  export PATH="$(brew --prefix)/opt/findutils/libexec/gnubin:$PATH"
+  export PATH="$(brew --prefix)/opt/gawk/libexec/gnubin:$PATH"
+  export PATH="$(brew --prefix)/opt/bash/bin:$PATH"  # newer bash
+
+  # Tell gpg-agent which terminal to use for the pinentry passphrase prompt.
+  # Without this, git commit signing fails with "Inappropriate ioctl for device".
+  # https://www.gnupg.org/documentation/manuals/gnupg/Invoking-GPG_002dAGENT.html
+  export GPG_TTY=$(tty)
+
+  # Use the native macOS pinentry dialog (+ Keychain) for GPG passphrases.
+  # Installed by bootstrap_mac.sh. Only writes the config once, and only
+  # reloads the agent when it actually changed.
+  if command -v pinentry-mac >/dev/null 2>&1 &&
+     ! grep -qs pinentry-mac ~/.gnupg/gpg-agent.conf; then
+    mkdir -p ~/.gnupg
+    echo "pinentry-program $(brew --prefix)/bin/pinentry-mac" >> ~/.gnupg/gpg-agent.conf
+    gpgconf --kill gpg-agent
+  fi
+fi
+
 alias ls='ls --color=auto'
 alias grep='grep --color=auto'
 
