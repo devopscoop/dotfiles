@@ -66,6 +66,16 @@ export PATH="${PATH}:${HOME}/bin:${HOME}/.local/bin:${HOME}/go/bin"
 # source '/opt/kube-ps1/kube-ps1.sh'
 # PS1='[\w $(__git_ps1 "(%s)") $(kube_ps1)]\$ '
 
+# Programmable completion (bash-completion@2). Must be sourced before the
+# per-tool completions below so the completion machinery (_init_completion,
+# etc.) and the drop-ins in bash-completion.d (git, brew, ssh, make, ...) load.
+# https://github.com/scop/bash-completion#installation
+if [[ "$(uname)" == "Darwin" ]]; then
+  source "$(brew --prefix)/etc/profile.d/bash_completion.sh"
+else
+  source /usr/share/bash-completion/bash_completion
+fi
+
 # kubectl
 source <(kubectl completion bash)
 alias k=kubectl
