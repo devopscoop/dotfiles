@@ -47,6 +47,8 @@ brew "fluxcd/tap/flux", trusted: true
 cask "claude-code"
 # Web browser
 cask "firefox"
+# Monospace font with Nerd Font glyphs (icons used by the starship prompt)
+cask "font-jetbrains-mono-nerd-font"
 # Terminal emulator that uses platform-native UI and GPU acceleration
 cask "ghostty"
 # Team communication and collaboration software
