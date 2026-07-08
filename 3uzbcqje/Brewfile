@@ -7,6 +7,8 @@ brew "aws-sso-cli"
 brew "awscli"
 # Bourne-Again SHell, a UNIX command interpreter
 brew "bash"
+# Programmable completion for Bash 4.2+
+brew "bash-completion@2"
 # Preexec and precmd functions for Bash (like Zsh)
 brew "bash-preexec"
 # GNU File, Shell, and Text utilities
@@ -47,7 +49,6 @@ brew "fluxcd/tap/flux", trusted: true
 cask "claude-code"
 # Web browser
 cask "firefox"
-# Monospace font with Nerd Font glyphs (icons used by the starship prompt)
 cask "font-jetbrains-mono-nerd-font"
 # Terminal emulator that uses platform-native UI and GPU acceleration
 cask "ghostty"
