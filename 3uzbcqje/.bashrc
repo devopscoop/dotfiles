@@ -83,8 +83,16 @@ alias kubewatchevents='kubectl get events --sort-by=.metadata.creationTimestamp 
 # https://fluxcd.io/flux/installation/
 source <(flux completion bash)
 
-# Using bash-preexec and atuin for magical shell history
-[[ -f /usr/share/bash-preexec/bash-preexec.sh ]] && source /usr/share/bash-preexec/bash-preexec.sh
+# Using bash-preexec and atuin for magical shell history.
+# bash-preexec must be sourced BEFORE atuin and starship init: both register
+# into precmd_functions/preexec_functions, and bash-preexec is what actually
+# runs those arrays. Without it, atuin history capture and the starship prompt
+# both silently do nothing.
+if [[ "$(uname)" == "Darwin" ]]; then
+  source "$(brew --prefix)/etc/profile.d/bash-preexec.sh"
+else
+  source /usr/share/bash-preexec/bash-preexec.sh
+fi
 eval "$(atuin init bash --disable-up-arrow)"
 
 # https://cli.github.com/manual/gh_completion
@@ -101,7 +109,7 @@ eval "$(gh completion -s bash)"
 # export SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/ssh-agent.socket"
 
 # https://docs.k0sproject.io/stable/shell-completion/
-source <(k0s completion bash)
+# source <(k0s completion bash)
 
 alias codium='/opt/vscodium-bin/codium --enable-features=UseOzonePlatform,WaylandWindowDecorations --ozone-platform=wayland'
 
