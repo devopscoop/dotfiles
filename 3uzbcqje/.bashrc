@@ -35,7 +35,9 @@ alias grep='grep --color=auto'
 
 alias nocomment=$'sed -E \'/^[ \t]*#/d;/^[ \t]*$/d;\''
 alias grepp='grep -rIi --exclude-dir .git --exclude-dir node_modules --exclude-dir .terraform'
-alias codium='/opt/vscodium-bin/codium --enable-features=UseOzonePlatform,WaylandWindowDecorations --ozone-platform=wayland'
+if [ "$(uname)" != "Darwin" ]; then
+  alias codium='/opt/vscodium-bin/codium --enable-features=UseOzonePlatform,WaylandWindowDecorations --ozone-platform=wayland'
+fi
 alias difff='diff -w -W 240 -y --color=always --suppress-common-lines'
 alias awslogin="okta-aws-cli web --all-profiles --open-browser --aws-session-duration 42300 --oidc-client-id 0oa1o4hf5l3zhPrXL358 --org-domain dfinity.okta.com --write-aws-credentials"
 alias gen-rand-username=$'openssl rand -base64 13 | sed \'s/[^a-z]//g\''
@@ -121,14 +123,15 @@ eval "$(gh completion -s bash)"
 # https://docs.k0sproject.io/stable/shell-completion/
 # source <(k0s completion bash)
 
-alias codium='/opt/vscodium-bin/codium --enable-features=UseOzonePlatform,WaylandWindowDecorations --ozone-platform=wayland'
-
 # Added by LM Studio CLI (lms)
 export PATH="$PATH:/home/user/.lmstudio/bin"
 # End of LM Studio CLI section
 
-# Added by Claude Code so it can run sudo
-export SUDO_ASKPASS=/usr/lib/seahorse/ssh-askpass
+# On macOS this Linux path is absent and setting it makes `sudo -A`
+# (e.g. Homebrew cask installers) fail, so only set it on Linux.
+if [ "$(uname)" != "Darwin" ]; then
+  export SUDO_ASKPASS=/usr/lib/seahorse/ssh-askpass
+fi
 
 # Adding a function to set the title of a terminal window
 function set-title() {

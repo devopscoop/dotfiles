@@ -26,3 +26,6 @@ echo $BASH_VERSION  # should be 5.x, not the Apple 3.2 fossil
 # Clone all git repos
 # gh repo list devopscoop --limit 1000 --json nameWithOwner -q '.[].nameWithOwner' | \
 #   xargs -P4 -I{} gh repo clone {}
+
+# Karabiner-Elements Windows Mode
+# https://github.com/rux616/karabiner-windows-mode
