@@ -4,6 +4,20 @@
 
 Share your dotfiles! Browse other people's dotfiles. Get smarter.
 
+## Install required packages
+
+Package manifests live in each user's directory rather than the repo root, since everyone's toolset differs. For example, [3uzbcqje/Brewfile](3uzbcqje/Brewfile) installs that user's packages on macOS:
+
+```shell
+brew bundle --file=3uzbcqje/Brewfile
+```
+
+or run [3uzbcqje/bootstrap_mac.sh](3uzbcqje/bootstrap_mac.sh), which runs `brew bundle` and sets Homebrew bash as the default shell. To capture your own machine's packages into your directory:
+
+```shell
+brew bundle dump --file=<your-dir>/Brewfile
+```
+
 ## Usage
 
 1. Create a directory for yourself.
