@@ -1,4 +1,6 @@
 tap "fluxcd/tap"
+# Simple, modern, secure file encryption
+brew "age"
 # Improved shell history for zsh, bash, fish and nushell
 brew "atuin"
 # Securely manage AWS API credentials using AWS SSO
@@ -11,12 +13,18 @@ brew "bash"
 brew "bash-completion@2"
 # Preexec and precmd functions for Bash (like Zsh)
 brew "bash-preexec"
+# Container runtimes on MacOS (and Linux) with minimal setup
+brew "colima"
 # GNU File, Shell, and Text utilities
 brew "coreutils"
 # Get a file from an HTTP, HTTPS or FTP server
 brew "curl"
 # Load/unload environment variables based on $PWD
 brew "direnv"
+# Pack, ship and run any application as a lightweight container
+brew "docker"
+# Diff tool for YAML files, and sometimes JSON
+brew "dyff"
 # Collection of GNU find, xargs, and locate
 brew "findutils"
 # GNU awk utility
@@ -33,18 +41,34 @@ brew "gnu-tar"
 brew "gnupg"
 # GNU grep, egrep and fgrep
 brew "grep"
+# Kubernetes package manager
+brew "helm"
+# Kubernetes CLI To Manage Your Clusters In Style!
+brew "k9s"
 # Kubernetes command-line interface
 brew "kubernetes-cli"
+# DNS library written in C
+brew "ldns"
 # Pinentry for GPG on Mac
 brew "pinentry-mac"
+# Editor of encrypted files
+brew "sops"
 # Cross-shell prompt for astronauts
 brew "starship"
+# Tail multiple Kubernetes pods & their containers
+brew "stern"
+# OpenTofu / Terraform / Terragrunt / Terramate / Atmos version manager
+brew "tenv"
 # Vi 'workalike' with many additional features
 brew "vim"
 # Internet file retriever
 brew "wget"
+# Process YAML, JSON, XML, CSV and properties documents from the CLI
+brew "yq"
 # Flux CLI
 brew "fluxcd/tap/flux", trusted: true
+# Managed client-based VPN service to securely access AWS resources
+cask "aws-vpn-client"
 # Terminal-based AI coding assistant
 cask "claude-code"
 # Web browser
@@ -52,5 +76,9 @@ cask "firefox"
 cask "font-jetbrains-mono-nerd-font"
 # Terminal emulator that uses platform-native UI and GPU acceleration
 cask "ghostty"
+# Keyboard customiser
+cask "karabiner-elements"
 # Team communication and collaboration software
 cask "slack"
+# Binary releases of VS Code without MS branding/telemetry/licensing
+cask "vscodium"
