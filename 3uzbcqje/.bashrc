@@ -95,6 +95,16 @@ alias kubewatchevents='kubectl get events --sort-by=.metadata.creationTimestamp 
 # https://fluxcd.io/flux/installation/
 source <(flux completion bash)
 
+# /etc/bash.bashrc seeds PROMPT_COMMAND as an array (xterm title printf), and
+# bash-preexec 0.6.0 mishandles array PROMPT_COMMANDs: its deferred installer
+# gets string-glued onto element [0], direnv's array-prepend later shifts that
+# element to [1] where bash-preexec's cleanup never removes it, and the
+# orphaned installer then re-runs 'trap - DEBUG' on every prompt — silently
+# killing preexec and atuin history capture. Reset to a plain scalar so
+# bash-preexec starts from a clean string. Must be unset, not
+# PROMPT_COMMAND=(): an empty array still triggers the bug.
+unset PROMPT_COMMAND
+
 # Using bash-preexec and atuin for magical shell history.
 # bash-preexec must be sourced BEFORE atuin and starship init: both register
 # into precmd_functions/preexec_functions, and bash-preexec is what actually
