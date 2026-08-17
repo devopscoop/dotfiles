@@ -7,12 +7,13 @@
 
 # Fix macOS shitfuckery
 if [[ "$(uname)" == "Darwin" ]]; then
+  export PATH="$(brew --prefix)/opt/bash/bin:$PATH"  # newer bash
   export PATH="$(brew --prefix)/opt/coreutils/libexec/gnubin:$PATH"
-  export PATH="$(brew --prefix)/opt/gnu-sed/libexec/gnubin:$PATH"
-  export PATH="$(brew --prefix)/opt/grep/libexec/gnubin:$PATH"
   export PATH="$(brew --prefix)/opt/findutils/libexec/gnubin:$PATH"
   export PATH="$(brew --prefix)/opt/gawk/libexec/gnubin:$PATH"
-  export PATH="$(brew --prefix)/opt/bash/bin:$PATH"  # newer bash
+  export PATH="$(brew --prefix)/opt/gnu-sed/libexec/gnubin:$PATH"
+  export PATH="$(brew --prefix)/opt/gnu-tar/libexec/gnubin:$PATH"
+  export PATH="$(brew --prefix)/opt/grep/libexec/gnubin:$PATH"
 
   # Tell gpg-agent which terminal to use for the pinentry passphrase prompt.
   # Without this, git commit signing fails with "Inappropriate ioctl for device".
