@@ -39,7 +39,7 @@ alias grepp='grep -rIi --exclude-dir .git --exclude-dir node_modules --exclude-d
 if [ "$(uname)" != "Darwin" ]; then
   alias codium='/opt/vscodium-bin/codium --enable-features=UseOzonePlatform,WaylandWindowDecorations --ozone-platform=wayland'
 fi
-alias difff='diff -w -W 240 -y --color=always --suppress-common-lines'
+alias difff='diff -w -W $(tput cols) -y --color=always --suppress-common-lines'
 alias awslogin="okta-aws-cli web --all-profiles --open-browser --aws-session-duration 42300 --oidc-client-id 0oa1o4hf5l3zhPrXL358 --org-domain dfinity.okta.com --write-aws-credentials"
 alias gen-rand-username=$'openssl rand -base64 13 | sed \'s/[^a-z]//g\''
 alias local-ai='sudo docker run --rm -ti --name local-ai -p 8080:8080 \
@@ -157,3 +157,8 @@ eval "$(direnv hook bash)"
 # Add some presets (one time)
 # starship preset nerd-font-symbols -o ~/.config/starship.toml
 eval "$(starship init bash)"
+
+# Added by LM Studio CLI (lms)
+export PATH="$PATH:/Users/user/.lmstudio/bin"
+# End of LM Studio CLI section
+
