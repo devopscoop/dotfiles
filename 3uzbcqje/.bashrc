@@ -6,14 +6,16 @@
 [[ $- != *i* ]] && return
 
 # Fix macOS shitfuckery
-if [[ "$(uname)" == "Darwin" ]]; then
-  export PATH="$(brew --prefix)/opt/bash/bin:$PATH"  # newer bash
-  export PATH="$(brew --prefix)/opt/coreutils/libexec/gnubin:$PATH"
-  export PATH="$(brew --prefix)/opt/findutils/libexec/gnubin:$PATH"
-  export PATH="$(brew --prefix)/opt/gawk/libexec/gnubin:$PATH"
-  export PATH="$(brew --prefix)/opt/gnu-sed/libexec/gnubin:$PATH"
-  export PATH="$(brew --prefix)/opt/gnu-tar/libexec/gnubin:$PATH"
-  export PATH="$(brew --prefix)/opt/grep/libexec/gnubin:$PATH"
+if [[ "$OSTYPE" == darwin* ]]; then
+  # brew --prefix takes about 30ms, so run it once.
+  HOMEBREW_PREFIX="${HOMEBREW_PREFIX:-$(brew --prefix)}"
+  export PATH="${HOMEBREW_PREFIX}/opt/bash/bin:$PATH"  # newer bash
+  export PATH="${HOMEBREW_PREFIX}/opt/coreutils/libexec/gnubin:$PATH"
+  export PATH="${HOMEBREW_PREFIX}/opt/findutils/libexec/gnubin:$PATH"
+  export PATH="${HOMEBREW_PREFIX}/opt/gawk/libexec/gnubin:$PATH"
+  export PATH="${HOMEBREW_PREFIX}/opt/gnu-sed/libexec/gnubin:$PATH"
+  export PATH="${HOMEBREW_PREFIX}/opt/gnu-tar/libexec/gnubin:$PATH"
+  export PATH="${HOMEBREW_PREFIX}/opt/grep/libexec/gnubin:$PATH"
 
   # Tell gpg-agent which terminal to use for the pinentry passphrase prompt.
   # Without this, git commit signing fails with "Inappropriate ioctl for device".
@@ -26,7 +28,7 @@ if [[ "$(uname)" == "Darwin" ]]; then
   if command -v pinentry-mac >/dev/null 2>&1 &&
      ! grep -qs pinentry-mac ~/.gnupg/gpg-agent.conf; then
     mkdir -p ~/.gnupg
-    echo "pinentry-program $(brew --prefix)/bin/pinentry-mac" >> ~/.gnupg/gpg-agent.conf
+    echo "pinentry-program ${HOMEBREW_PREFIX}/bin/pinentry-mac" >> ~/.gnupg/gpg-agent.conf
     gpgconf --kill gpg-agent
   fi
 fi
@@ -36,7 +38,7 @@ alias grep='grep --color=auto'
 
 alias nocomment=$'sed -E \'/^[ \t]*#/d;/^[ \t]*$/d;\''
 alias grepp='grep -rIi --exclude-dir .git --exclude-dir node_modules --exclude-dir .terraform'
-if [ "$(uname)" != "Darwin" ]; then
+if [[ "$OSTYPE" != darwin* ]]; then
   alias codium='/opt/vscodium-bin/codium --enable-features=UseOzonePlatform,WaylandWindowDecorations --ozone-platform=wayland'
 fi
 alias difff='diff -w -W $(tput cols) -y --color=always --suppress-common-lines'
@@ -73,14 +75,26 @@ export PATH="${PATH}:${HOME}/bin:${HOME}/.local/bin:${HOME}/go/bin"
 # per-tool completions below so the completion machinery (_init_completion,
 # etc.) and the drop-ins in bash-completion.d (git, brew, ssh, make, ...) load.
 # https://github.com/scop/bash-completion#installation
-if [[ "$(uname)" == "Darwin" ]]; then
-  source "$(brew --prefix)/etc/profile.d/bash_completion.sh"
+if [[ "$OSTYPE" == darwin* ]]; then
+  source "${HOMEBREW_PREFIX}/etc/profile.d/bash_completion.sh"
 else
   source /usr/share/bash-completion/bash_completion
 fi
 
+# Registers a tool's completion now. Generating it by running the tool costs
+# 30-50ms, so the packaged script is tried first. On macOS, bash-completion
+# already sourced it from Homebrew's etc/bash_completion.d. On Linux,
+# _comp_load reads it from the package's completions dir.
+# Usage: _load_tool_completion <command that prints the completion script>
+_load_tool_completion() {
+  complete -p "$1" &>/dev/null && return
+  _comp_load -- "$1" 2>/dev/null && return
+  command -v "$1" >/dev/null && source <("$@")
+}
+
 # kubectl
-source <(kubectl completion bash)
+# The k alias below needs __start_kubectl defined now, not at the first tab.
+_load_tool_completion kubectl completion bash
 alias k=kubectl
 complete -o default -F __start_kubectl k
 alias kns='kubectl config set-context --current --namespace'
@@ -94,7 +108,7 @@ export PATH="${PATH}:$HOME/kubectl-plugins"
 alias kubewatchevents='kubectl get events --sort-by=.metadata.creationTimestamp --watch'
 
 # https://fluxcd.io/flux/installation/
-source <(flux completion bash)
+_load_tool_completion flux completion bash
 
 # /etc/bash.bashrc seeds PROMPT_COMMAND as an array (xterm title printf), and
 # bash-preexec 0.6.0 mishandles array PROMPT_COMMANDs: its deferred installer
@@ -111,15 +125,15 @@ unset PROMPT_COMMAND
 # into precmd_functions/preexec_functions, and bash-preexec is what actually
 # runs those arrays. Without it, atuin history capture and the starship prompt
 # both silently do nothing.
-if [[ "$(uname)" == "Darwin" ]]; then
-  source "$(brew --prefix)/etc/profile.d/bash-preexec.sh"
+if [[ "$OSTYPE" == darwin* ]]; then
+  source "${HOMEBREW_PREFIX}/etc/profile.d/bash-preexec.sh"
 else
   source /usr/share/bash-preexec/bash-preexec.sh
 fi
 eval "$(atuin init bash --disable-up-arrow)"
 
 # https://cli.github.com/manual/gh_completion
-eval "$(gh completion -s bash)"
+_load_tool_completion gh completion -s bash
 
 # Do this once to use Gnome Keyring seahorse with ssh
 # systemctl --user enable gcr-ssh-agent.socket
@@ -140,7 +154,7 @@ export PATH="$PATH:/home/user/.lmstudio/bin"
 
 # On macOS this Linux path is absent and setting it makes `sudo -A`
 # (e.g. Homebrew cask installers) fail, so only set it on Linux.
-if [ "$(uname)" != "Darwin" ]; then
+if [[ "$OSTYPE" != darwin* ]]; then
   export SUDO_ASKPASS=/usr/lib/seahorse/ssh-askpass
 fi
 
@@ -161,4 +175,3 @@ eval "$(starship init bash)"
 # Added by LM Studio CLI (lms)
 export PATH="$PATH:/Users/user/.lmstudio/bin"
 # End of LM Studio CLI section
-
