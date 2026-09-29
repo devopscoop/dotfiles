@@ -5,9 +5,6 @@
 # If not running interactively, don't do anything
 [[ $- != *i* ]] && return
 
-# OS checks use $OSTYPE, not $(uname). Every $(...) forks a process, and the
-# forks add up to a visible delay before the first prompt.
-
 # Fix macOS shitfuckery
 if [[ "$OSTYPE" == darwin* ]]; then
   # brew --prefix takes about 30ms, so run it once.
