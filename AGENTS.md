@@ -65,9 +65,15 @@ debugging silent failures. Preserve it:
    what runs those arrays; the wrong order fails silently.
 
 The file is sourced on both macOS and Linux. macOS-only lines sit behind
-`[[ "$(uname)" == "Darwin" ]]` (GNU coreutils PATH prepends, `GPG_TTY`,
+`[[ "$OSTYPE" == darwin* ]]` (GNU coreutils PATH prepends, `GPG_TTY`,
 pinentry-mac) and Linux-only lines behind the inverse (`SUDO_ASKPASS`,
 `codium`). New additions need the same guarding.
+
+Every `$(...)` runs a process before the first prompt, so keep them out of
+startup. Use `$OSTYPE` instead of `$(uname)` and `$HOMEBREW_PREFIX` instead of
+`$(brew --prefix)`. Register a tool's completion with `_load_tool_completion`,
+not `source <(tool completion bash)`. The helper uses the packaged completion
+script and runs the tool only when no package provides one.
 
 ## Package manifests
 
