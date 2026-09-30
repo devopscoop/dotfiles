@@ -175,3 +175,4 @@ eval "$(starship init bash)"
 # Added by LM Studio CLI (lms)
 export PATH="$PATH:/Users/user/.lmstudio/bin"
 # End of LM Studio CLI section
+eval "$(mise activate bash)"

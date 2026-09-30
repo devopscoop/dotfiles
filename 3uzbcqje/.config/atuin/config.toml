@@ -123,10 +123,18 @@
 ## with ^ or end with $, they'll match anywhere in the command.
 ## For details on the supported regular expression syntax, see
 ## https://docs.rs/regex/latest/regex/#syntax
-# history_filter = [
-#   "^secret-cmd",
-#   "^innocuous-cmd .*--secret=.+",
-# ]
+history_filter = [
+  # NAME=value where NAME looks like a secret and value is a literal, not $VAR or $(...)
+  '''(?i)\b[a-z0-9_]*(secret|password|passwd|token|api_?key|private_?key|access_?key)[a-z0-9_]*=["']?[^\s"'$]''',
+  # --password/--client-secret/--token style flags followed by a literal value
+  '''(?i)\s--?(password|passwd|client-secret|secret|api-?key|token|auth-token|access-token|private-key)[= ]+["']?[^\s"'$-]''',
+  # CrowdStrike pull script short flags: -s client secret, -p password
+  '''falcon-container-sensor-pull\.sh.*\s-[sp]\s+[^\s$-]''',
+  # SQL: ALTER/CREATE ROLE ... PASSWORD 'literal'
+  '''(?i)\bpassword\s+'[^']''',
+  # Decoding a pasted base64 blob, which is how k8s secrets and age keys get inspected
+  '''echo\s+["']?[A-Za-z0-9+/]{40,}={0,2}["']?\s*\|\s*base64\s+(-d|-D|--decode)''',
+]
 
 ## prevent commands run with cwd matching any of these regexes from being written
 ## to history. Note that these regular expressions are unanchored, i.e. if they don't
