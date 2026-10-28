@@ -4,7 +4,7 @@
 set -o pipefail
 export PATH="/opt/homebrew/bin:$PATH"   # launchd PATH lacks Homebrew (git, git-remote-rad)
 
-root="${GIT_SYNC_ROOT:-$HOME/git}"
+root="$HOME/git"
 attention=()
 g() { git -C "$repo" "$@"; }
 
