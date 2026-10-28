@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# Daily, non-destructive refresh of every git repo under ~/git, at any depth.
+# Never switches branches, never creates merge commits, never touches uncommitted work.
+# Runs on Linux and macOS. Only use flags GNU and BSD find/awk/paste share: on
+# macOS, launchd gets the BSD tools and interactive shells get Homebrew's GNU ones.
+set -o pipefail
+# launchd's PATH lacks Homebrew (git, git-remote-rad).
+[[ "$OSTYPE" == darwin* ]] && export PATH="/opt/homebrew/bin:$PATH"
+
+attention=()
+g() { git -C "$repo" "$@"; }
+
+echo "=== $(date)"
+# One .git path per pass, from the find after `done`. IFS= keeps leading/trailing
+# spaces, -r keeps backslashes, -d '' splits on NUL (find's -print0). -u 3 reads
+# the list from fd 3, not stdin: anything in the loop that reads stdin (ssh, gh,
+# a prompt) would otherwise eat the remaining paths and silently end the loop.
+while IFS= read -r -d '' -u 3 dotgit; do
+  repo=${dotgit%/.git}; name=${repo#"$HOME/git"/}
+  # Let git decide. Only a standalone clone reports ".git" here; submodules and
+  # linked worktrees report a path elsewhere, and non-repos fail.
+  [ "$(g rev-parse --git-dir 2>/dev/null)" = .git ] || continue
+
+  g fetch --all --prune --quiet || { attention+=("$name: fetch failed"); continue; }
+
+  default=$(g symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null)
+  default=${default#origin/}; default=${default:-main}
+  upstream=$(g rev-parse --abbrev-ref "$default@{upstream}" 2>/dev/null) \
+    || { attention+=("$name: $default has no upstream"); continue; }
+  current=$(g branch --show-current)
+
+  # Fast-forward only. Git refuses if diverged or if it would overwrite local edits.
+  if [ "$current" = "$default" ]; then
+    g merge --ff-only --quiet "$upstream" >/dev/null 2>&1
+  else
+    g fetch --quiet . "refs/remotes/$upstream:refs/heads/$default" 2>/dev/null
+  fi || attention+=("$name: couldn't fast-forward $default to $upstream")
+
+  # Same as delete-merged-branches, but never the default branch or one checked out in any worktree.
+  while read -r b worktree; do
+    [ "$b" = "$default" ] || [ -n "$worktree" ] && continue
+    g branch -D -q "$b" && echo "$name: deleted merged branch $b"
+  done < <(g for-each-ref --merged="$default" --format='%(refname:short) %(worktreepath)' refs/heads/)
+
+  # Replaces the `git status -s; git branch` loop: only report what needs a human.
+  [ -n "$(g status --porcelain)" ] && attention+=("$name: uncommitted changes")
+  others=$(g for-each-ref --format='%(refname:short) %(upstream:track)' refs/heads/ |
+    awk -v d="$default" '$1 != d { sub(/ +$/, ""); print }' | paste -sd, -)
+  [ -n "$others" ] && attention+=("$name: other branches: $others")
+# find: don't descend into .terraform or node_modules (dependency clones, not
+# repos we own); print each .git, NUL-terminated, without walking inside it.
+# 3< feeds that list to the read's -u 3.
+done 3< <(find "$HOME/git" \( -name .terraform -o -name node_modules \) -prune -o -name .git -prune -print0)
+
+if [ ${#attention[@]} -gt 0 ]; then
+  printf '%s\n' "${attention[@]}"
+  if [[ "$OSTYPE" == darwin* ]]; then
+    osascript -e "display notification \"${#attention[@]} item(s) need attention. See ~/Library/Logs/git-sync.log\" with title \"git sync\""
+  elif command -v notify-send >/dev/null; then
+    notify-send "git sync" "${#attention[@]} item(s) need attention. See journalctl --user -u git-sync"
+  fi
+fi

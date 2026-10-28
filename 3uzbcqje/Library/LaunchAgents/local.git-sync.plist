@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>local.git-sync</string>
+  <!-- launchd doesn't expand ~ or $HOME, so let sh do it. -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/sh</string>
+    <string>-c</string>
+    <string>exec "$HOME/.local/bin/git-sync-all" &gt;&gt; "$HOME/Library/Logs/git-sync.log" 2&gt;&amp;1</string>
+  </array>
+  <!-- Daily at 08:00. If the Mac is asleep then, launchd runs it on wake. -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>8</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+  <!-- Also run at login, to catch up after the Mac was shut down. -->
+  <key>RunAtLoad</key>
+  <true/>
+</dict>
+</plist>

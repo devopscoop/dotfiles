@@ -1,0 +1,8 @@
+[Unit]
+Description=Refresh git repos under ~/git
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/git-sync-all
+# User services don't see the shell's SSH_AUTH_SOCK; point at the agent directly.
+Environment=SSH_AUTH_SOCK=%t/ssh-agent.socket
