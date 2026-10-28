@@ -52,6 +52,6 @@ if [ ${#attention[@]} -gt 0 ]; then
   if [[ "$OSTYPE" == darwin* ]]; then
     osascript -e "display notification \"${#attention[@]} item(s) need attention. See ~/Library/Logs/git-sync.log\" with title \"git sync\""
   elif command -v notify-send >/dev/null; then
-    notify-send "git sync" "${#attention[@]} item(s) need attention."
+    notify-send "git sync" "${#attention[@]} item(s) need attention. See journalctl --user -u git-sync"
   fi
 fi

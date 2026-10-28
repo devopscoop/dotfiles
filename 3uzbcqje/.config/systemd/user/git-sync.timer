@@ -1,0 +1,10 @@
+[Unit]
+Description=Run git-sync daily
+
+[Timer]
+OnCalendar=*-*-* 08:00:00
+# Run at the next login if the machine was off or logged out at 08:00.
+Persistent=true
+
+[Install]
+WantedBy=timers.target
