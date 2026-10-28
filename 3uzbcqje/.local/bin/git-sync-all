@@ -7,10 +7,27 @@ set -o pipefail
 # launchd's PATH lacks Homebrew (git, git-remote-rad).
 [[ "$OSTYPE" == darwin* ]] && export PATH="/opt/homebrew/bin:$PATH"
 
-attention=()
 g() { git -C "$repo" "$@"; }
+# One logfmt line: log LEVEL MSG [KEY=VALUE...], stamped with RFC 3339 UTC time.
+# Values that are empty or hold spaces, quotes, = or \ get quoted and escaped.
+# launchd runs macOS's bash 3.2, hence date(1) rather than printf's %(...)T.
+log() {
+  local line="ts=$(date -u +%Y-%m-%dT%H:%M:%SZ) level=$1" kv v
+  shift
+  for kv in "msg=$1" "${@:2}"; do
+    v=${kv#*=}
+    case $v in '' | *[[:space:]\"=\\]*)
+      v=${v//\\/\\\\}; v=${v//\"/\\\"}; v=\"${v//$'\n'/\\n}\" ;;
+    esac
+    line+=" ${kv%%=*}=$v"
+  done
+  printf '%s\n' "$line"
+}
+# Anything a human needs to look at: log it, and count it for the notification.
+attention=0
+warn() { log warn "$@"; attention=$((attention + 1)); }
 
-echo "=== $(date)"
+log info "sync started"
 # One .git path per pass, from the find after `done`. IFS= keeps leading/trailing
 # spaces, -r keeps backslashes, -d '' splits on NUL (find's -print0). -u 3 reads
 # the list from fd 3, not stdin: anything in the loop that reads stdin (ssh, gh,
@@ -21,12 +38,14 @@ while IFS= read -r -d '' -u 3 dotgit; do
   # linked worktrees report a path elsewhere, and non-repos fail.
   [ "$(g rev-parse --git-dir 2>/dev/null)" = .git ] || continue
 
-  g fetch --all --prune --quiet || { attention+=("$name: fetch failed"); continue; }
+  # Capture git's complaint so it lands in the log line, not as loose text.
+  err=$(g fetch --all --prune --quiet 2>&1) \
+    || { warn "fetch failed" repo="$name" error="$err"; continue; }
 
   default=$(g symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null)
   default=${default#origin/}; default=${default:-main}
   upstream=$(g rev-parse --abbrev-ref "$default@{upstream}" 2>/dev/null) \
-    || { attention+=("$name: $default has no upstream"); continue; }
+    || { warn "no upstream" repo="$name" branch="$default"; continue; }
   current=$(g branch --show-current)
 
   # Fast-forward only. Git refuses if diverged or if it would overwrite local edits.
@@ -34,29 +53,30 @@ while IFS= read -r -d '' -u 3 dotgit; do
     g merge --ff-only --quiet "$upstream" >/dev/null 2>&1
   else
     g fetch --quiet . "refs/remotes/$upstream:refs/heads/$default" 2>/dev/null
-  fi || attention+=("$name: couldn't fast-forward $default to $upstream")
+  fi && log info "repo synced" repo="$name" branch="$default" \
+    || warn "couldn't fast-forward" repo="$name" branch="$default" upstream="$upstream"
 
   # Same as delete-merged-branches, but never the default branch or one checked out in any worktree.
   while read -r b worktree; do
     [ "$b" = "$default" ] || [ -n "$worktree" ] && continue
-    g branch -D -q "$b" && echo "$name: deleted merged branch $b"
+    g branch -D -q "$b" && log info "deleted merged branch" repo="$name" branch="$b"
   done < <(g for-each-ref --merged="$default" --format='%(refname:short) %(worktreepath)' refs/heads/)
 
   # Replaces the `git status -s; git branch` loop: only report what needs a human.
-  [ -n "$(g status --porcelain)" ] && attention+=("$name: uncommitted changes")
+  [ -n "$(g status --porcelain)" ] && warn "uncommitted changes" repo="$name"
   others=$(g for-each-ref --format='%(refname:short) %(upstream:track)' refs/heads/ |
     awk -v d="$default" '$1 != d { sub(/ +$/, ""); print }' | paste -sd, -)
-  [ -n "$others" ] && attention+=("$name: other branches: $others")
+  [ -n "$others" ] && warn "other branches" repo="$name" branches="$others"
 # find: don't descend into .terraform or node_modules (dependency clones, not
 # repos we own); print each .git, NUL-terminated, without walking inside it.
 # 3< feeds that list to the read's -u 3.
 done 3< <(find "$HOME/git" \( -name .terraform -o -name node_modules \) -prune -o -name .git -prune -print0)
 
-if [ ${#attention[@]} -gt 0 ]; then
-  printf '%s\n' "${attention[@]}"
+log info "sync finished" attention="$attention"
+if [ "$attention" -gt 0 ]; then
   if [[ "$OSTYPE" == darwin* ]]; then
-    osascript -e "display notification \"${#attention[@]} item(s) need attention. See ~/Library/Logs/git-sync.log\" with title \"git sync\""
+    osascript -e "display notification \"$attention item(s) need attention. See ~/Library/Logs/git-sync.log\" with title \"git sync\""
   elif command -v notify-send >/dev/null; then
-    notify-send "git sync" "${#attention[@]} item(s) need attention. See journalctl --user -u git-sync"
+    notify-send "git sync" "$attention item(s) need attention. See journalctl --user -u git-sync"
   fi
 fi
