@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 # Daily, non-destructive refresh of every git repo under ~/git, at any depth.
 # Never switches branches, never creates merge commits, never touches uncommitted work.
+# Runs on Linux and macOS. Only use flags GNU and BSD find/awk/paste share: on
+# macOS, launchd gets the BSD tools and interactive shells get Homebrew's GNU ones.
 set -o pipefail
-export PATH="/opt/homebrew/bin:$PATH"   # launchd PATH lacks Homebrew (git, git-remote-rad)
+# launchd's PATH lacks Homebrew (git, git-remote-rad).
+[[ "$OSTYPE" == darwin* ]] && export PATH="/opt/homebrew/bin:$PATH"
 
 attention=()
 g() { git -C "$repo" "$@"; }
@@ -46,5 +49,9 @@ done 3< <(find "$HOME/git" \( -name .terraform -o -name node_modules \) -prune -
 
 if [ ${#attention[@]} -gt 0 ]; then
   printf '%s\n' "${attention[@]}"
-  osascript -e "display notification \"${#attention[@]} item(s) need attention. See ~/Library/Logs/git-sync.log\" with title \"git sync\""
+  if [[ "$OSTYPE" == darwin* ]]; then
+    osascript -e "display notification \"${#attention[@]} item(s) need attention. See ~/Library/Logs/git-sync.log\" with title \"git sync\""
+  elif command -v notify-send >/dev/null; then
+    notify-send "git sync" "${#attention[@]} item(s) need attention."
+  fi
 fi
