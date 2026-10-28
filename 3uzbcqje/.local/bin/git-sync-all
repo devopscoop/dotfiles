@@ -4,13 +4,12 @@
 set -o pipefail
 export PATH="/opt/homebrew/bin:$PATH"   # launchd PATH lacks Homebrew (git, git-remote-rad)
 
-root="$HOME/git"
 attention=()
 g() { git -C "$repo" "$@"; }
 
 echo "=== $(date)"
-for repo in "$root"/*/*/; do
-  repo=${repo%/}; name=${repo#"$root"/}
+for repo in "$HOME/git"/*/*/; do
+  repo=${repo%/}; name=${repo#"$HOME/git"/}
   [ -e "$repo/.git" ] || continue
 
   g fetch --all --prune --quiet || { attention+=("$name: fetch failed"); continue; }
