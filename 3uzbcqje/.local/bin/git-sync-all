@@ -12,7 +12,9 @@ g() { git -C "$repo" "$@"; }
 
 echo "=== $(date)"
 # One .git path per pass, from the find after `done`. IFS= keeps leading/trailing
-# spaces, -r keeps backslashes, -d '' splits on NUL (find's -print0), -u 3 reads fd 3.
+# spaces, -r keeps backslashes, -d '' splits on NUL (find's -print0). -u 3 reads
+# the list from fd 3, not stdin: anything in the loop that reads stdin (ssh, gh,
+# a prompt) would otherwise eat the remaining paths and silently end the loop.
 while IFS= read -r -d '' -u 3 dotgit; do
   repo=${dotgit%/.git}; name=${repo#"$HOME/git"/}
   # Let git decide. Only a standalone clone reports ".git" here; submodules and
@@ -47,8 +49,7 @@ while IFS= read -r -d '' -u 3 dotgit; do
   [ -n "$others" ] && attention+=("$name: other branches: $others")
 # find: don't descend into .terraform or node_modules (dependency clones, not
 # repos we own); print each .git, NUL-terminated, without walking inside it.
-# 3< hands find's output to the read as fd 3, so nothing in the loop (git, ssh)
-# can swallow the list from stdin.
+# 3< feeds that list to the read's -u 3.
 done 3< <(find "$HOME/git" \( -name .terraform -o -name node_modules \) -prune -o -name .git -prune -print0)
 
 if [ ${#attention[@]} -gt 0 ]; then
