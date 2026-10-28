@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Daily, non-destructive refresh of every repo under ~/git/<org>/<repo>.
+# Never switches branches, never creates merge commits, never touches uncommitted work.
+set -o pipefail
+export PATH="/opt/homebrew/bin:$PATH"   # launchd PATH lacks Homebrew (git, git-remote-rad)
+
+root="${GIT_SYNC_ROOT:-$HOME/git}"
+attention=()
+g() { git -C "$repo" "$@"; }
+
+echo "=== $(date)"
+for repo in "$root"/*/*/; do
+  repo=${repo%/}; name=${repo#"$root"/}
+  [ -e "$repo/.git" ] || continue
+
+  g fetch --all --prune --quiet || { attention+=("$name: fetch failed"); continue; }
+
+  default=$(g symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null)
+  default=${default#origin/}; default=${default:-main}
+  upstream=$(g rev-parse --abbrev-ref "$default@{upstream}" 2>/dev/null) \
+    || { attention+=("$name: $default has no upstream"); continue; }
+  current=$(g branch --show-current)
+
+  # Fast-forward only. Git refuses if diverged or if it would overwrite local edits.
+  if [ "$current" = "$default" ]; then
+    g merge --ff-only --quiet "$upstream" >/dev/null 2>&1
+  else
+    g fetch --quiet . "refs/remotes/$upstream:refs/heads/$default" 2>/dev/null
+  fi || attention+=("$name: couldn't fast-forward $default to $upstream")
+
+  # Same as delete-merged-branches, but never the default or checked-out branch.
+  while read -r b; do
+    [ "$b" = "$default" ] || [ "$b" = "$current" ] && continue
+    g branch -D -q "$b" && echo "$name: deleted merged branch $b"
+  done < <(g for-each-ref --merged="$default" --format='%(refname:short)' refs/heads/)
+
+  # Replaces the `git status -s; git branch` loop: only report what needs a human.
+  [ -n "$(g status --porcelain)" ] && attention+=("$name: uncommitted changes")
+  others=$(g for-each-ref --format='%(refname:short) %(upstream:track)' refs/heads/ |
+    awk -v d="$default" '$1 != d { sub(/ +$/, ""); print }' | paste -sd, -)
+  [ -n "$others" ] && attention+=("$name: other branches: $others")
+done
+
+if [ ${#attention[@]} -gt 0 ]; then
+  printf '%s\n' "${attention[@]}"
+  osascript -e "display notification \"${#attention[@]} item(s) need attention. See ~/Library/Logs/git-sync.log\" with title \"git sync\""
+fi

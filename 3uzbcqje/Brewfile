@@ -51,6 +51,8 @@ brew "kubernetes-cli"
 brew "ldns"
 # Pinentry for GPG on Mac
 brew "pinentry-mac"
+# Sovereign code forge built on Git
+brew "radicle"
 # Editor of encrypted files
 brew "sops"
 # Cross-shell prompt for astronauts
