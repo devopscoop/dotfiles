@@ -1,6 +1,6 @@
 ---
 # Install with:
-# pre-commit install --config /home/user/git/devopscoop/dotfiles/3uzbcqje/.pre-commit-config.yaml
+# pre-commit install --config /home/user/git/devopscoop-dotfiles/3uzbcqje/.pre-commit-config.yaml
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
 repos:

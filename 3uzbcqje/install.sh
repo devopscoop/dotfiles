@@ -6,11 +6,17 @@
 # creates a symlink at the matching path under $HOME. Anything already present
 # at the destination (a real file, dir, or a symlink pointing elsewhere) is
 # left untouched and skipped; only correct existing symlinks are treated as
-# already done. This script never clobbers existing files.
+# already done. By default this script never clobbers existing files.
+#
+# With --force, whatever is in the way is replaced by the link. Symlinks
+# pointing elsewhere are simply replaced; real files and directories are moved
+# aside to <name>.bak.<timestamp> first, so nothing is lost.
 #
 # Usage:
-#   ./install.sh          # create the symlinks
+#   ./install.sh           # create the symlinks
 #   ./install.sh --dry-run # show what would happen, change nothing
+#   ./install.sh --force   # replace anything in the way (backing up real files)
+#   ./install.sh --force --dry-run # show what --force would do
 
 set -euo pipefail
 
@@ -18,7 +24,24 @@ set -euo pipefail
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 DRY_RUN=0
-[[ "${1:-}" == "--dry-run" || "${1:-}" == "-n" ]] && DRY_RUN=1
+FORCE=0
+for arg in "$@"; do
+    case "$arg" in
+        -n | --dry-run) DRY_RUN=1 ;;
+        -f | --force) FORCE=1 ;;
+        -h | --help)
+            sed -n '2,/^$/s/^# \{0,1\}//p' "${BASH_SOURCE[0]}"
+            exit 0
+            ;;
+        *)
+            echo "unknown option: $arg (try --help)" >&2
+            exit 2
+            ;;
+    esac
+done
+
+# Suffix for backups of real files moved aside by --force.
+BACKUP_SUFFIX=".bak.$(date +%Y%m%d%H%M%S)"
 
 # Files/dirs to never link, relative to DOTFILES_DIR.
 EXCLUDES=(".git" "install.sh" "bootstrap_mac.sh" "README.md")
@@ -43,13 +66,32 @@ link_one() {
     fi
 
     # Anything already in the way (real file, dir, or a symlink pointing
-    # elsewhere) is left untouched — we never clobber existing files.
+    # elsewhere) is left untouched unless --force was given.
     if [[ -e "$dst" || -L "$dst" ]]; then
-        echo "skip $rel (exists, not clobbering) -> $dst"
-        return
-    fi
-
-    if [[ $DRY_RUN -eq 1 ]]; then
+        if [[ $FORCE -eq 0 ]]; then
+            echo "skip $rel (exists, not clobbering) -> $dst"
+            return
+        fi
+        if [[ -L "$dst" ]]; then
+            # A foreign symlink holds no data; just replace it.
+            local old
+            old="$(readlink "$dst")"
+            if [[ $DRY_RUN -eq 1 ]]; then
+                echo "would replace symlink $rel (was -> $old) -> $src"
+                return
+            fi
+            rm "$dst"
+            echo "unlink $rel (was -> $old)"
+        else
+            # A real file or directory: move it aside rather than delete it.
+            if [[ $DRY_RUN -eq 1 ]]; then
+                echo "would back up $dst -> $dst$BACKUP_SUFFIX and link $rel -> $src"
+                return
+            fi
+            mv "$dst" "$dst$BACKUP_SUFFIX"
+            echo "backup $dst -> $dst$BACKUP_SUFFIX"
+        fi
+    elif [[ $DRY_RUN -eq 1 ]]; then
         echo "would link $rel -> $src"
         return
     fi
