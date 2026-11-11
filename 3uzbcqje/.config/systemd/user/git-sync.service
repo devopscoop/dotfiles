@@ -4,5 +4,7 @@ Description=Refresh git repos under ~/git
 [Service]
 Type=oneshot
 ExecStart=%h/.local/bin/git-sync-all
-# User services don't see the shell's SSH_AUTH_SOCK; point at the agent directly.
+# Set the agent socket here rather than relying on whatever SSH_AUTH_SOCK the
+# user manager inherited. For GNOME Keyring's agent, override with a drop-in
+# (see README.md).
 Environment=SSH_AUTH_SOCK=%t/ssh-agent.socket

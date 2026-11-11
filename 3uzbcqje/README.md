@@ -54,31 +54,32 @@ Runs daily at 08:00, or when the machine resumes if it was suspended then. If it
 was off or you were logged out, it runs at your next login. It only runs while
 you're logged in. Output goes to the journal.
 
-1. Make sure an ssh-agent is listening at `$XDG_RUNTIME_DIR/ssh-agent.socket`
-   with your key loaded. User services don't see your shell's `SSH_AUTH_SOCK`,
-   so the service points there directly. Without it, every repo reports
-   `fetch failed`. See
-   [Start ssh-agent with systemd user](https://wiki.archlinux.org/title/SSH_keys#Start_ssh-agent_with_systemd_user).
-   `AddKeysToAgent yes` in `~/.ssh/config` loads the key the first time you
-   use ssh after logging in.
-
-   If you use GNOME Keyring's agent (`gcr-ssh-agent.socket`) instead, point the
-   service at it:
-
-   ```shell
-   systemctl --user edit git-sync.service
-   ```
-
-   ```ini
-   [Service]
-   Environment=SSH_AUTH_SOCK=%t/gcr/ssh
-   ```
-
 1. Link the files:
 
    ```shell
    ./install.sh
    ```
+
+1. Make sure an ssh-agent is listening at `$XDG_RUNTIME_DIR/ssh-agent.socket`
+   with your key loaded. The service sets `SSH_AUTH_SOCK` to that path itself,
+   so it doesn't depend on what your shell or desktop exported. Without an
+   agent there, every repo reports `fetch failed`. See
+   [Start ssh-agent with systemd user](https://wiki.archlinux.org/title/SSH_keys#Start_ssh-agent_with_systemd_user).
+   `AddKeysToAgent yes` in `~/.ssh/config` loads the key the first time you
+   use ssh after logging in.
+
+   If you use GNOME Keyring's agent instead (`echo $SSH_AUTH_SOCK` shows
+   `.../gcr/ssh`), point the service at it with a drop-in. Run this after
+   linking the files, because `systemctl edit` fails on a unit that doesn't
+   exist yet:
+
+   ```shell
+   printf '[Service]\nEnvironment=SSH_AUTH_SOCK=%%t/gcr/ssh\n' |
+     systemctl --user edit --stdin git-sync.service
+   ```
+
+   `--stdin` needs systemd 256 or newer. On older versions, run
+   `systemctl --user edit git-sync.service` and paste the two lines in.
 
 1. Enable the timer:
 
@@ -91,7 +92,7 @@ you're logged in. Output goes to the journal.
 
    ```shell
    systemctl --user start git-sync.service
-   journalctl --user -u git-sync
+   journalctl --user -u git-sync -e
    systemctl --user list-timers git-sync.timer
    ```
 
