@@ -133,8 +133,10 @@ while IFS= read -r -d '' -u 3 dotgit; do
   [ -n "$(g status --porcelain)" ] && warn "uncommitted changes" repo="$name"
 # find: don't descend into .terraform or node_modules (dependency clones, not
 # repos we own); print each .git, NUL-terminated, without walking inside it.
-# 3< feeds that list to the read's -u 3.
-done 3< <(find "$HOME/git" \( -name .terraform -o -name node_modules \) -prune -o -name .git -prune -print0)
+# sort -z orders them alphabetically, still NUL-terminated; LC_ALL=C so launchd
+# and interactive shells agree. 3< feeds that list to the read's -u 3.
+done 3< <(find "$HOME/git" \( -name .terraform -o -name node_modules \) -prune -o -name .git -prune -print0 \
+  | LC_ALL=C sort -z)
 
 log info "sync finished" attention="$attention"
 # A test run reports through its exit status instead of a notification.
