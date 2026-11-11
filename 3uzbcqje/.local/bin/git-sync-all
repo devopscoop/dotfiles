@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Daily, non-destructive refresh of every git repo under ~/git, at any depth.
 # Never switches branches, never creates merge commits, never touches uncommitted work.
+# Syncs the default branch across all remotes: fast-forwards to each, pushes to each.
 # Runs on Linux and macOS. Only use flags GNU and BSD find/awk/paste share: on
 # macOS, launchd gets the BSD tools and interactive shells get Homebrew's GNU ones.
 set -o pipefail
@@ -44,17 +45,39 @@ while IFS= read -r -d '' -u 3 dotgit; do
 
   default=$(g symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null)
   default=${default#origin/}; default=${default:-main}
-  upstream=$(g rev-parse --abbrev-ref "$default@{upstream}" 2>/dev/null) \
-    || { warn "no upstream" repo="$name" branch="$default"; continue; }
+  local_ref=refs/heads/$default
   current=$(g branch --show-current)
+  remotes=$(g remote)
+  before=$attention
 
-  # Fast-forward only. Git refuses if diverged or if it would overwrite local edits.
-  if [ "$current" = "$default" ]; then
-    g merge --ff-only --quiet "$upstream" >/dev/null 2>&1
-  else
-    g fetch --quiet . "refs/remotes/$upstream:refs/heads/$default" 2>/dev/null
-  fi && log info "repo synced" repo="$name" branch="$default" \
-    || warn "couldn't fast-forward" repo="$name" branch="$default" upstream="$upstream"
+  # Collect every remote's copy of the default branch: fast-forward to each in turn.
+  # Git refuses if diverged or if it would overwrite local edits.
+  found=0
+  for r in $remotes; do
+    ref=refs/remotes/$r/$default
+    g rev-parse --verify --quiet "$ref" >/dev/null || continue
+    found=1
+    g merge-base --is-ancestor "$ref" "$local_ref" 2>/dev/null && continue # already have it
+    if [ "$current" = "$default" ]; then
+      g merge --ff-only --quiet "$ref" >/dev/null 2>&1
+    else
+      g fetch --quiet . "$ref:$local_ref" 2>/dev/null
+    fi || warn "couldn't fast-forward" repo="$name" branch="$default" remote="$r"
+  done
+  [ "$found" = 1 ] || { warn "no remote has branch" repo="$name" branch="$default"; continue; }
+
+  # Push the result to every remote that's behind. A plain push is fast-forward
+  # only, so a diverged remote (already warned above) is skipped, never overwritten.
+  for r in $remotes; do
+    ref=refs/remotes/$r/$default
+    g rev-parse --verify --quiet "$ref" >/dev/null || continue
+    [ "$(g rev-parse "$ref")" = "$(g rev-parse "$local_ref")" ] && continue
+    g merge-base --is-ancestor "$ref" "$local_ref" || continue
+    err=$(g push --quiet "$r" "$local_ref:$local_ref" 2>&1) \
+      && log info "pushed" repo="$name" branch="$default" remote="$r" \
+      || warn "push failed" repo="$name" branch="$default" remote="$r" error="$err"
+  done
+  [ "$attention" = "$before" ] && log info "repo synced" repo="$name" branch="$default"
 
   # Same as delete-merged-branches, but never the default branch or one checked out in any worktree.
   while read -r b worktree; do
