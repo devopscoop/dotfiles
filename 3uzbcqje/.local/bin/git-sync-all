@@ -28,7 +28,45 @@ log() {
 attention=0
 warn() { log warn "$@"; attention=$((attention + 1)); }
 
-log info "sync started"
+# Every repo in a known family must have exactly its expected remotes, each
+# fetching and pushing to the expected host. Repos in no family aren't checked.
+# Warns and returns 1 on any mismatch.
+check_remotes() {
+  local want got r url pat ok=0
+  case $name in
+    3uzbcqje-* | 6j0-org-* | devopscoop-*) want='codeberg github gitlab rad' ;;
+    Equal-Vote/* | EdgeApp/* | aur.archlinux.org/*) want=origin ;;
+    *) return 0 ;;
+  esac
+  got=$(g remote | LC_ALL=C sort | paste -sd' ' -)
+  [ "$got" = "$want" ] \
+    || { warn "unexpected remotes" repo="$name" want="$want" got="$got"; return 1; }
+  # `remote -v` lists each remote's fetch and push URL; sort -u folds the two
+  # when they're the same. An unquoted $pat in a case pattern is matched as a glob.
+  while read -r r url; do
+    case $name/$r in
+      aur.archlinux.org/*/origin) pat='ssh://aur@aur.archlinux.org/*' ;;
+      */origin | */github) pat='*github.com[:/]*' ;;
+      */gitlab) pat='*gitlab.com[:/]*' ;;
+      */codeberg) pat='*codeberg.org[:/]*' ;;
+      */rad) pat='rad://*' ;;
+    esac
+    case $url in
+      $pat) ;;
+      *) warn "unexpected remote url" repo="$name" remote="$r" url="$url" want="$pat"; ok=1 ;;
+    esac
+  done < <(g remote -v | awk '{ print $1, $2 }' | sort -u)
+  return $ok
+}
+
+check_only=false
+case ${1-} in
+  '') ;;
+  --check-remotes-only) check_only=true ;;
+  *) echo "usage: ${0##*/} [--check-remotes-only]" >&2; exit 2 ;;
+esac
+
+log info "sync started" check_remotes_only="$check_only"
 # One .git path per pass, from the find after `done`. IFS= keeps leading/trailing
 # spaces, -r keeps backslashes, -d '' splits on NUL (find's -print0). -u 3 reads
 # the list from fd 3, not stdin: anything in the loop that reads stdin (ssh, gh,
@@ -38,6 +76,10 @@ while IFS= read -r -d '' -u 3 dotgit; do
   # Let git decide. Only a standalone clone reports ".git" here; submodules and
   # linked worktrees report a path elsewhere, and non-repos fail.
   [ "$(g rev-parse --git-dir 2>/dev/null)" = .git ] || continue
+
+  # We push to every remote, so never sync a repo whose remotes look wrong.
+  check_remotes || continue
+  "$check_only" && continue
 
   # Capture git's complaint so it lands in the log line, not as loose text.
   err=$(g fetch --all --prune --quiet 2>&1) \
@@ -52,7 +94,7 @@ while IFS= read -r -d '' -u 3 dotgit; do
 
   # Collect every remote's copy of the default branch: fast-forward to each in turn.
   # Git refuses if diverged or if it would overwrite local edits.
-  found=0
+  found=0 changed=0
   for r in $remotes; do
     ref=refs/remotes/$r/$default
     g rev-parse --verify --quiet "$ref" >/dev/null || continue
@@ -62,7 +104,8 @@ while IFS= read -r -d '' -u 3 dotgit; do
       g merge --ff-only --quiet "$ref" >/dev/null 2>&1
     else
       g fetch --quiet . "$ref:$local_ref" 2>/dev/null
-    fi || warn "couldn't fast-forward" repo="$name" branch="$default" remote="$r"
+    fi && changed=1 \
+      || warn "couldn't fast-forward" repo="$name" branch="$default" remote="$r"
   done
   [ "$found" = 1 ] || { warn "no remote has branch" repo="$name" branch="$default"; continue; }
 
@@ -74,28 +117,30 @@ while IFS= read -r -d '' -u 3 dotgit; do
     [ "$(g rev-parse "$ref")" = "$(g rev-parse "$local_ref")" ] && continue
     g merge-base --is-ancestor "$ref" "$local_ref" || continue
     err=$(g push --quiet "$r" "$local_ref:$local_ref" 2>&1) \
-      && log info "pushed" repo="$name" branch="$default" remote="$r" \
+      && { changed=1; log info "pushed" repo="$name" branch="$default" remote="$r"; } \
       || warn "push failed" repo="$name" branch="$default" remote="$r" error="$err"
   done
-  [ "$attention" = "$before" ] && log info "repo synced" repo="$name" branch="$default"
+  # Summarize only clean repos; a repo with warnings already has its own lines.
+  if [ "$attention" = "$before" ]; then
+    if [ "$changed" = 1 ]; then
+      log info "repo synced" repo="$name" branch="$default"
+    else
+      log info "no changes" repo="$name" branch="$default"
+    fi
+  fi
 
-  # Same as delete-merged-branches, but never the default branch or one checked out in any worktree.
-  while read -r b worktree; do
-    [ "$b" = "$default" ] || [ -n "$worktree" ] && continue
-    g branch -D -q "$b" && log info "deleted merged branch" repo="$name" branch="$b"
-  done < <(g for-each-ref --merged="$default" --format='%(refname:short) %(worktreepath)' refs/heads/)
-
-  # Replaces the `git status -s; git branch` loop: only report what needs a human.
+  # Uncommitted work can block the fast-forward, so flag it.
   [ -n "$(g status --porcelain)" ] && warn "uncommitted changes" repo="$name"
-  others=$(g for-each-ref --format='%(refname:short) %(upstream:track)' refs/heads/ |
-    awk -v d="$default" '$1 != d { sub(/ +$/, ""); print }' | paste -sd, -)
-  [ -n "$others" ] && warn "other branches" repo="$name" branches="$others"
 # find: don't descend into .terraform or node_modules (dependency clones, not
 # repos we own); print each .git, NUL-terminated, without walking inside it.
 # 3< feeds that list to the read's -u 3.
 done 3< <(find "$HOME/git" \( -name .terraform -o -name node_modules \) -prune -o -name .git -prune -print0)
 
 log info "sync finished" attention="$attention"
+# A test run reports through its exit status instead of a notification.
+if "$check_only"; then
+  [ "$attention" -eq 0 ]; exit
+fi
 if [ "$attention" -gt 0 ]; then
   if [[ "$OSTYPE" == darwin* ]]; then
     osascript -e "display notification \"$attention item(s) need attention. See ~/Library/Logs/git-sync.log\" with title \"git sync\""

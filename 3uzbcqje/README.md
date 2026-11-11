@@ -9,15 +9,22 @@ and never overwrites existing files (`./install.sh --dry-run` to preview).
 any depth. It skips anything under `.terraform/` or `node_modules/`, along with
 submodules and linked worktrees. For each repo it:
 
+- checks its remotes, and skips the repo if they're wrong: `3uzbcqje-*`,
+  `6j0-org-*` and `devopscoop-*` must have exactly `codeberg`, `github`,
+  `gitlab` and `rad`, each pointing at that host; `Equal-Vote/*` and `EdgeApp/*`
+  must have only `origin` on GitHub; `aur.archlinux.org/*` must have only
+  `origin` at `ssh://aur@aur.archlinux.org/`. Run
+  `git-sync-all --check-remotes-only` to run just this check; it exits non-zero
+  if anything is wrong.
 - fetches all remotes, pruning deleted branches
-- fast-forwards the default branch without switching branches; a diverged
-  default branch is reported, not touched
-- deletes local branches already merged into the default branch, except ones
-  checked out in a worktree
+- fast-forwards the default branch to each remote's copy of it, without
+  switching branches; a remote that has diverged is reported, not touched
+- pushes the default branch to every remote that is behind (never forced)
 
-It never creates merge commits or touches uncommitted work. Repos that need you
-(uncommitted changes, leftover branches, a diverged default branch, a failed
-fetch) are listed in its output and raise a desktop notification.
+It only manages the default branch; other branches are ignored. It never creates
+merge commits or touches uncommitted work. Repos that need you (wrong remotes,
+uncommitted changes, a diverged default branch, a failed fetch or push) are
+listed in its output and raise a desktop notification.
 
 Run it by hand any time with `git-sync-all`. To run it daily, enable it for your
 OS below.
