@@ -79,7 +79,12 @@ you're logged in. Output goes to the journal.
    ```
 
    `--stdin` needs systemd 256 or newer. On older versions, run
-   `systemctl --user edit git-sync.service` and paste the two lines in.
+   `systemctl --user edit git-sync.service` and paste these lines in:
+
+   ```ini
+   [Service]
+   Environment=SSH_AUTH_SOCK=%t/gcr/ssh
+   ```
 
 1. Enable the timer:
 
