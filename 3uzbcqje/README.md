@@ -21,10 +21,19 @@ submodules and linked worktrees. For each repo it:
   switching branches; a remote that has diverged is reported, not touched
 - pushes the default branch to every remote that is behind (never forced)
 
+Then it lists every unarchived repo that `3uzbcqje`, `devopscoop` and `6j0-org`
+own on GitHub, GitLab and Codeberg, and reports each one that isn't cloned. A
+repo counts as cloned if it's at `~/git/<owner>-<name>` or
+`~/git/<owner>/<name>`, or if any clone has a remote pointing at it. GitHub is
+read through `gh`, so its private repos are included; GitLab and Codeberg are
+read without a token, so only their public repos are. `--check-remotes-only`
+skips this step.
+
 It only manages the default branch; other branches are ignored. It never creates
 merge commits or touches uncommitted work. Repos that need you (wrong remotes,
-uncommitted changes, a diverged default branch, a failed fetch or push) are
-listed in its output and raise a desktop notification.
+uncommitted changes, a diverged default branch, a failed fetch or push, or a
+repo on a forge that isn't cloned) are listed in its output and raise a desktop
+notification.
 
 Run it by hand any time with `git-sync-all`. To run it daily, enable it for your
 OS below.
