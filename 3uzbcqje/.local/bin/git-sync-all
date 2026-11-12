@@ -2,11 +2,17 @@
 # Daily, non-destructive refresh of every git repo under ~/git, at any depth.
 # Never switches branches, never creates merge commits, never touches uncommitted work.
 # Syncs the default branch across all remotes: fast-forwards to each, pushes to each.
+# Then flags repos the owners below have on GitHub, GitLab, or Codeberg but that
+# aren't cloned under ~/git.
 # Runs on Linux and macOS. Only use flags GNU and BSD find/awk/paste share: on
 # macOS, launchd gets the BSD tools and interactive shells get Homebrew's GNU ones.
 set -o pipefail
-# launchd's PATH lacks Homebrew (git, git-remote-rad).
+# launchd's PATH lacks Homebrew (git, git-remote-rad, gh).
 [[ "$OSTYPE" == darwin* ]] && export PATH="/opt/homebrew/bin:$PATH"
+
+# Accounts whose every unarchived repo should be cloned, on all three forges.
+# Keep in step with the first family in check_remotes.
+owners=(3uzbcqje devopscoop 6j0-org)
 
 g() { git -C "$repo" "$@"; }
 # One logfmt line: log LEVEL MSG [KEY=VALUE...], stamped with RFC 3339 UTC time.
@@ -59,6 +65,39 @@ check_remotes() {
   return $ok
 }
 
+# Run jq filter $2 over every page of the paged JSON array API at $1. Output is
+# held back until the last page arrives, so a failure prints only curl's error.
+paged() {
+  local page=1 body all=
+  while body=$(curl -fsS -m 30 "$1&page=$page"); do
+    [ "$body" = "[]" ] && { printf '%s' "$all"; return; }
+    all+=$(jq -r "$2" <<<"$body")$'\n' || return
+    page=$((page + 1))
+  done
+  return 1
+}
+# Print host/owner/name for each unarchived repo owner $2 has on forge $1.
+# GitLab and Codeberg are asked without a token, so they list public repos only.
+list_repos() {
+  local f
+  case $1 in
+    github.com)
+      # Not --no-archived: it switches to the search API, which lags behind new
+      # repos and returns nothing, successfully, for an owner that doesn't exist.
+      gh repo list "$2" --limit 1000 --json nameWithOwner,isArchived \
+        --jq '.[] | select(.isArchived | not) | "github.com/" + .nameWithOwner' ;;
+    gitlab.com)
+      # Users and groups have separate endpoints. A project pending deletion is
+      # renamed to NAME-deletion_scheduled-ID and still listed.
+      f='.[] | select(.path | test("-deletion_scheduled-[0-9]+$") | not) | "gitlab.com/" + .path_with_namespace'
+      paged "https://gitlab.com/api/v4/users/$2/projects?archived=false&per_page=100" "$f" 2>/dev/null \
+        || paged "https://gitlab.com/api/v4/groups/$2/projects?archived=false&include_subgroups=true&per_page=100" "$f" ;;
+    codeberg.org)
+      paged "https://codeberg.org/api/v1/users/$2/repos?limit=50" \
+        '.[] | select(.archived | not) | "codeberg.org/" + .full_name' ;;
+  esac
+}
+
 check_only=false
 case ${1-} in
   '') ;;
@@ -67,6 +106,7 @@ case ${1-} in
 esac
 
 log info "sync started" check_remotes_only="$check_only"
+cloned=
 # One .git path per pass, from the find after `done`. IFS= keeps leading/trailing
 # spaces, -r keeps backslashes, -d '' splits on NUL (find's -print0). -u 3 reads
 # the list from fd 3, not stdin: anything in the loop that reads stdin (ssh, gh,
@@ -76,6 +116,8 @@ while IFS= read -r -d '' -u 3 dotgit; do
   # Let git decide. Only a standalone clone reports ".git" here; submodules and
   # linked worktrees report a path elsewhere, and non-repos fail.
   [ "$(g rev-parse --git-dir 2>/dev/null)" = .git ] || continue
+  # Its path and remote URLs, for matching against forge repos after the loop.
+  cloned+=$name$'\n'$(g config --get-regexp '^remote\..*\.url$')$'\n'
 
   # We push to every remote, so never sync a repo whose remotes look wrong.
   check_remotes || continue
@@ -137,6 +179,47 @@ while IFS= read -r -d '' -u 3 dotgit; do
 # and interactive shells agree. 3< feeds that list to the read's -u 3.
 done 3< <(find "$HOME/git" \( -name .terraform -o -name node_modules \) -prune -o -name .git -prune -print0 \
   | LC_ALL=C sort -z)
+
+if ! "$check_only"; then
+  forge_repos=
+  for forge in github.com gitlab.com codeberg.org; do
+    for owner in "${owners[@]}"; do
+      if out=$(list_repos "$forge" "$owner" 2>&1); then
+        forge_repos+=$out$'\n'
+      else
+        warn "couldn't list repos" forge="$forge" owner="$owner" error="$out"
+      fi
+    done
+  done
+  # A forge repo owner/name counts as cloned if any clone has a remote pointing
+  # at owner/name on any host, or sits at ~/git/owner-name (the layout
+  # check_remotes expects) or ~/git/owner/name. Matching ignores the host, so one
+  # clone covers a repo's mirrors on the other forges, and a repo missing from
+  # several forges is reported once.
+  while read -r missing forges; do
+    warn "not cloned" repo="$missing" forges="$forges"
+  done < <(awk '
+    !NF { next }
+    FILENAME == ARGV[1] {
+      if (/^remote\.[^ ]*\.url /) {
+        # Keep only the path: drop scheme://host/ or scp-style [user@]host:, then .git.
+        $0 = $2
+        if (!sub(/^[a-z][a-z0-9+.-]*:\/\/[^\/]*\//, "")) sub(/^[^:]*:/, "")
+        sub(/\.git\/?$/, "")
+      }
+      have[tolower($0)]
+      next
+    }
+    {
+      host = $0; sub(/\/.*/, "", host); path = substr($0, length(host) + 2)
+      k = tolower(path); flat = k; gsub(/\//, "-", flat)
+      if ((k in have) || (flat in have)) next
+      if (k in on) on[k] = on[k] "," host
+      else { on[k] = host; repos[++n] = path }
+    }
+    END { for (i = 1; i <= n; i++) print repos[i], on[tolower(repos[i])] }
+  ' <(printf '%s' "$cloned") <(printf '%s' "$forge_repos"))
+fi
 
 log info "sync finished" attention="$attention"
 # A test run reports through its exit status instead of a notification.
