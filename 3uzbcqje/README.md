@@ -9,13 +9,17 @@ and never overwrites existing files (`./install.sh --dry-run` to preview).
 any depth. It skips anything under `.terraform/` or `node_modules/`, along with
 submodules and linked worktrees. For each repo it:
 
+- adds any missing `codeberg`, `github` or `gitlab` remote to
+  `~/git/<owner>-<name>`, pointing at `git@<forge>:<owner>/<name>.git`. An
+  `origin` on one of those forges is renamed instead. A missing `rad` remote
+  can't be added, since its URL holds a repo ID; run `rad init` for that.
 - checks its remotes, and skips the repo if they're wrong: `3uzbcqje-*`,
   `6j0-org-*` and `devopscoop-*` must have exactly `codeberg`, `github`,
   `gitlab` and `rad`, each pointing at that host; `Equal-Vote/*` and `EdgeApp/*`
   must have only `origin` on GitHub; `aur.archlinux.org/*` must have only
-  `origin` at `ssh://aur@aur.archlinux.org/`. Run
-  `git-sync-all --check-remotes-only` to run just this check; it exits non-zero
-  if anything is wrong.
+  `origin` at `ssh://aur@aur.archlinux.org/`. The `<node-id>` and
+  `<alias>@<node-id>` remotes rad adds for peers are ignored, in this check and
+  in the sync.
 - fetches all remotes, pruning deleted branches
 - fast-forwards the default branch to each remote's copy of it, without
   switching branches; a remote that has diverged is reported, not touched
@@ -26,8 +30,7 @@ own on GitHub, GitLab and Codeberg, and reports each one that isn't cloned. A
 repo counts as cloned if it's at `~/git/<owner>-<name>` or
 `~/git/<owner>/<name>`, or if any clone has a remote pointing at it. GitHub is
 read through `gh`, so its private repos are included; GitLab and Codeberg are
-read without a token, so only their public repos are. `--check-remotes-only`
-skips this step.
+read without a token, so only their public repos are.
 
 It only manages the default branch; other branches are ignored. It never creates
 merge commits or touches uncommitted work. Repos that need you (wrong remotes,

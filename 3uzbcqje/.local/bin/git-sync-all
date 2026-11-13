@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Daily, non-destructive refresh of every git repo under ~/git, at any depth.
 # Never switches branches, never creates merge commits, never touches uncommitted work.
+# Adds any forge remote that a repo of one of the owners below is missing.
 # Syncs the default branch across all remotes: fast-forwards to each, pushes to each.
 # Then flags repos the owners below have on GitHub, GitLab, or Codeberg but that
 # aren't cloned under ~/git.
@@ -34,19 +35,18 @@ log() {
 attention=0
 warn() { log warn "$@"; attention=$((attention + 1)); }
 
-# Every repo in a known family must have exactly its expected remotes, each
+# Every repo in a known family must have exactly its expected $remotes, each
 # fetching and pushing to the expected host. Repos in no family aren't checked.
 # Warns and returns 1 on any mismatch.
 check_remotes() {
-  local want got r url pat ok=0
+  local want r url pat ok=0
   case $name in
     3uzbcqje-* | 6j0-org-* | devopscoop-*) want='codeberg github gitlab rad' ;;
     Equal-Vote/* | EdgeApp/* | aur.archlinux.org/*) want=origin ;;
     *) return 0 ;;
   esac
-  got=$(g remote | LC_ALL=C sort | paste -sd' ' -)
-  [ "$got" = "$want" ] \
-    || { warn "unexpected remotes" repo="$name" want="$want" got="$got"; return 1; }
+  [ "$remotes" = "$want" ] \
+    || { warn "unexpected remotes" repo="$name" want="$want" got="$remotes"; return 1; }
   # `remote -v` lists each remote's fetch and push URL; sort -u folds the two
   # when they're the same. An unquoted $pat in a case pattern is matched as a glob.
   while read -r r url; do
@@ -56,6 +56,7 @@ check_remotes() {
       */gitlab) pat='*gitlab.com[:/]*' ;;
       */codeberg) pat='*codeberg.org[:/]*' ;;
       */rad) pat='rad://*' ;;
+      *) continue ;; # a rad peer, already left out of $remotes
     esac
     case $url in
       $pat) ;;
@@ -63,6 +64,29 @@ check_remotes() {
     esac
   done < <(g remote -v | awk '{ print $1, $2 }' | sort -u)
   return $ok
+}
+
+# Give a repo at ~/git/OWNER-NAME, for an OWNER in $owners, each forge remote it
+# lacks, pointing at OWNER/NAME on that forge. rad can't be added this way: its
+# URL holds a repo ID, not a name.
+add_remotes() {
+  local owner path= forge r
+  for owner in "${owners[@]}"; do
+    case $name in */*) ;; "$owner"-*) path=$owner/${name#"$owner"-} ;; esac
+  done
+  [ -n "$path" ] || return 0
+  for forge in codeberg.org github.com gitlab.com; do
+    r=${forge%.*}
+    g remote get-url "$r" >/dev/null 2>&1 && continue
+    # A plain `git clone` names its remote origin: rename it, don't duplicate it.
+    case $(g remote get-url origin 2>/dev/null) in
+      *"$forge"[:/]*)
+        g remote rename origin "$r" && log info "renamed remote" repo="$name" from=origin to="$r"
+        continue ;;
+    esac
+    g remote add "$r" "git@$forge:$path.git" \
+      && log info "added remote" repo="$name" remote="$r" url="git@$forge:$path.git"
+  done
 }
 
 # Run jq filter $2 over every page of the paged JSON array API at $1. Output is
@@ -98,14 +122,9 @@ list_repos() {
   esac
 }
 
-check_only=false
-case ${1-} in
-  '') ;;
-  --check-remotes-only) check_only=true ;;
-  *) echo "usage: ${0##*/} [--check-remotes-only]" >&2; exit 2 ;;
-esac
+[ $# -eq 0 ] || { echo "usage: ${0##*/}" >&2; exit 2; }
 
-log info "sync started" check_remotes_only="$check_only"
+log info "sync started"
 cloned=
 # One .git path per pass, from the find after `done`. IFS= keeps leading/trailing
 # spaces, -r keeps backslashes, -d '' splits on NUL (find's -print0). -u 3 reads
@@ -119,9 +138,12 @@ while IFS= read -r -d '' -u 3 dotgit; do
   # Its path and remote URLs, for matching against forge repos after the loop.
   cloned+=$name$'\n'$(g config --get-regexp '^remote\..*\.url$')$'\n'
 
+  add_remotes
+  # rad adds a remote named NID or ALIAS@NID for every peer it tracks. They're
+  # other nodes' namespaces, which we can't push to, so neither check nor sync them.
+  remotes=$(g remote | grep -Ev '^([^@]*@)?z6Mk' | LC_ALL=C sort | paste -sd' ' -)
   # We push to every remote, so never sync a repo whose remotes look wrong.
   check_remotes || continue
-  "$check_only" && continue
 
   # Capture git's complaint so it lands in the log line, not as loose text.
   err=$(g fetch --all --prune --quiet 2>&1) \
@@ -131,7 +153,6 @@ while IFS= read -r -d '' -u 3 dotgit; do
   default=${default#origin/}; default=${default:-main}
   local_ref=refs/heads/$default
   current=$(g branch --show-current)
-  remotes=$(g remote)
   before=$attention
 
   # Collect every remote's copy of the default branch: fast-forward to each in turn.
@@ -180,52 +201,46 @@ while IFS= read -r -d '' -u 3 dotgit; do
 done 3< <(find "$HOME/git" \( -name .terraform -o -name node_modules \) -prune -o -name .git -prune -print0 \
   | LC_ALL=C sort -z)
 
-if ! "$check_only"; then
-  forge_repos=
-  for forge in github.com gitlab.com codeberg.org; do
-    for owner in "${owners[@]}"; do
-      if out=$(list_repos "$forge" "$owner" 2>&1); then
-        forge_repos+=$out$'\n'
-      else
-        warn "couldn't list repos" forge="$forge" owner="$owner" error="$out"
-      fi
-    done
+forge_repos=
+for forge in github.com gitlab.com codeberg.org; do
+  for owner in "${owners[@]}"; do
+    if out=$(list_repos "$forge" "$owner" 2>&1); then
+      forge_repos+=$out$'\n'
+    else
+      warn "couldn't list repos" forge="$forge" owner="$owner" error="$out"
+    fi
   done
-  # A forge repo owner/name counts as cloned if any clone has a remote pointing
-  # at owner/name on any host, or sits at ~/git/owner-name (the layout
-  # check_remotes expects) or ~/git/owner/name. Matching ignores the host, so one
-  # clone covers a repo's mirrors on the other forges, and a repo missing from
-  # several forges is reported once.
-  while read -r missing forges; do
-    warn "not cloned" repo="$missing" forges="$forges"
-  done < <(awk '
-    !NF { next }
-    FILENAME == ARGV[1] {
-      if (/^remote\.[^ ]*\.url /) {
-        # Keep only the path: drop scheme://host/ or scp-style [user@]host:, then .git.
-        $0 = $2
-        if (!sub(/^[a-z][a-z0-9+.-]*:\/\/[^\/]*\//, "")) sub(/^[^:]*:/, "")
-        sub(/\.git\/?$/, "")
-      }
-      have[tolower($0)]
-      next
+done
+# A forge repo owner/name counts as cloned if any clone has a remote pointing
+# at owner/name on any host, or sits at ~/git/owner-name (the layout
+# check_remotes expects) or ~/git/owner/name. Matching ignores the host, so one
+# clone covers a repo's mirrors on the other forges, and a repo missing from
+# several forges is reported once.
+while read -r missing forges; do
+  warn "not cloned" repo="$missing" forges="$forges"
+done < <(awk '
+  !NF { next }
+  FILENAME == ARGV[1] {
+    if (/^remote\.[^ ]*\.url /) {
+      # Keep only the path: drop scheme://host/ or scp-style [user@]host:, then .git.
+      $0 = $2
+      if (!sub(/^[a-z][a-z0-9+.-]*:\/\/[^\/]*\//, "")) sub(/^[^:]*:/, "")
+      sub(/\.git\/?$/, "")
     }
-    {
-      host = $0; sub(/\/.*/, "", host); path = substr($0, length(host) + 2)
-      k = tolower(path); flat = k; gsub(/\//, "-", flat)
-      if ((k in have) || (flat in have)) next
-      if (k in on) on[k] = on[k] "," host
-      else { on[k] = host; repos[++n] = path }
-    }
-    END { for (i = 1; i <= n; i++) print repos[i], on[tolower(repos[i])] }
-  ' <(printf '%s' "$cloned") <(printf '%s' "$forge_repos"))
-fi
+    have[tolower($0)]
+    next
+  }
+  {
+    host = $0; sub(/\/.*/, "", host); path = substr($0, length(host) + 2)
+    k = tolower(path); flat = k; gsub(/\//, "-", flat)
+    if ((k in have) || (flat in have)) next
+    if (k in on) on[k] = on[k] "," host
+    else { on[k] = host; repos[++n] = path }
+  }
+  END { for (i = 1; i <= n; i++) print repos[i], on[tolower(repos[i])] }
+' <(printf '%s' "$cloned") <(printf '%s' "$forge_repos"))
 
 log info "sync finished" attention="$attention"
-# A test run reports through its exit status instead of a notification.
-if "$check_only"; then
-  [ "$attention" -eq 0 ]; exit
-fi
 if [ "$attention" -gt 0 ]; then
   if [[ "$OSTYPE" == darwin* ]]; then
     osascript -e "display notification \"$attention item(s) need attention. See ~/Library/Logs/git-sync.log\" with title \"git sync\""
