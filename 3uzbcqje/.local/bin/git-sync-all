@@ -149,8 +149,21 @@ while IFS= read -r -d '' -u 3 dotgit; do
   err=$(g fetch --all --prune --quiet 2>&1) \
     || { warn "fetch failed" repo="$name" error="$err"; continue; }
 
-  default=$(g symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null)
-  default=${default#origin/}; default=${default:-main}
+  # Each remote's HEAD names its default branch. Fetch (Git 2.48+) creates
+  # refs/remotes/R/HEAD when it's missing but never moves it, so a stale one
+  # shows up here as a disagreement. Fix with `git remote set-head --auto R`.
+  default=
+  for r in $remotes; do
+    d=$(g symbolic-ref --quiet --short "refs/remotes/$r/HEAD" 2>/dev/null) || continue
+    d=${d#"$r"/}
+    if [ -z "$default" ]; then
+      default=$d
+    elif [ "$d" != "$default" ]; then
+      warn "remotes disagree on default branch" repo="$name" remote="$r" branch="$d" want="$default"
+      continue 2
+    fi
+  done
+  default=${default:-main}
   local_ref=refs/heads/$default
   current=$(g branch --show-current)
   before=$attention
