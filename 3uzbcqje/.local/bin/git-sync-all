@@ -1,14 +1,17 @@
 #!/usr/bin/env bash
 # Daily, non-destructive refresh of every git repo under ~/git, at any depth.
 # Never switches branches, never creates merge commits, never touches uncommitted work.
-# Adds any forge remote that a repo of one of the owners below is missing.
-# Syncs the default branch across all remotes: fast-forwards to each, pushes to each.
+# Adds any forge remote that a repo of one of the owners below is missing, and
+# creates the repo on that forge if it isn't there yet: public for devopscoop
+# and 6j0-org, private for anyone else.
+# Syncs the default branch across all remotes: fast-forwards to each, pushes to
+# each, including any empty one, such as a repo it just created.
 # Then flags repos the owners below have on GitHub, GitLab, or Codeberg but that
 # aren't cloned under ~/git.
 # Runs on Linux and macOS. Only use flags GNU and BSD find/awk/paste share: on
 # macOS, launchd gets the BSD tools and interactive shells get Homebrew's GNU ones.
 set -o pipefail
-# launchd's PATH lacks Homebrew (git, git-remote-rad, gh).
+# launchd's PATH lacks Homebrew (git, git-remote-rad, gh, glab, fj).
 [[ "$OSTYPE" == darwin* ]] && export PATH="/opt/homebrew/bin:$PATH"
 
 # Accounts whose every unarchived repo should be cloned, on all three forges.
@@ -70,13 +73,14 @@ check_remotes() {
 # lacks, pointing at OWNER/NAME on that forge. rad can't be added this way: its
 # URL holds a repo ID, not a name.
 add_remotes() {
-  local owner path= forge r
+  local owner own= path= forge r
   for owner in "${owners[@]}"; do
-    case $name in */*) ;; "$owner"-*) path=$owner/${name#"$owner"-} ;; esac
+    case $name in */*) ;; "$owner"-*) own=$owner path=$owner/${name#"$owner"-} ;; esac
   done
   [ -n "$path" ] || return 0
   for forge in codeberg.org github.com gitlab.com; do
     r=${forge%.*}
+    create_repo "$forge" "$own" "${path#*/}"
     g remote get-url "$r" >/dev/null 2>&1 && continue
     # A plain `git clone` names its remote origin: rename it, don't duplicate it.
     case $(g remote get-url origin 2>/dev/null) in
@@ -87,6 +91,63 @@ add_remotes() {
     g remote add "$r" "git@$forge:$path.git" \
       && log info "added remote" repo="$name" remote="$r" url="git@$forge:$path.git"
   done
+}
+
+# fj on Codeberg. Run from / because with -H, fj parses the URL of every remote
+# of the repo it's started in, and fails on one it can't (rad://...).
+fj_codeberg() { (cd / && fj -H codeberg.org "$@"); }
+
+# The account glab and fj are signed into, looked up on first use. Both create a
+# repo differently in your own namespace than in an org's.
+gitlab_user= codeberg_user=
+lookup_users() {
+  case $1 in
+    gitlab.com)
+      [ -n "$gitlab_user" ] || gitlab_user=$(glab api user 2>/dev/null | jq -r .username) ;;
+    codeberg.org)
+      # Prints "currently signed into USER@codeberg.org".
+      [ -n "$codeberg_user" ] || { codeberg_user=$(fj_codeberg whoami 2>/dev/null)
+        codeberg_user=${codeberg_user##* }; codeberg_user=${codeberg_user%@*}; } ;;
+  esac
+}
+
+# Create OWNER/NAME ($2/$3) on forge $1 unless it's already there: public for
+# the orgs, private for anyone else.
+# The forge listing settles most repos without an API call; the rest (private
+# on GitLab or Codeberg, or archived) are looked up one by one. A failed lookup
+# can't tell "missing" from "unreachable", but then the create fails too, and
+# that's warned about. No CLI here runs in the repo or touches its remotes.
+create_repo() {
+  local forge=$1 owner=$2 repo_name=$3 out vis=private private=1
+  grep -Fixq "$forge/$owner/$repo_name" <<<"$forge_repos" && return 0
+  case $forge in
+    github.com) gh repo view "$owner/$repo_name" --json name ;;
+    gitlab.com) GITLAB_HOST=$forge glab repo view "$owner/$repo_name" ;;
+    codeberg.org) fj_codeberg repo view "$owner/$repo_name" ;;
+  esac >/dev/null 2>&1 && return 0
+  case $owner in devopscoop | 6j0-org) vis=public private= ;; esac
+  case $forge in
+    github.com)
+      out=$(gh repo create "$owner/$repo_name" --"$vis" 2>&1) ;;
+    gitlab.com)
+      # -s: don't git init or clone into the current directory.
+      lookup_users "$forge"
+      if [ "$owner" = "$gitlab_user" ]; then
+        out=$(GITLAB_HOST=$forge glab repo create "$repo_name" --"$vis" -s 2>&1)
+      else
+        out=$(GITLAB_HOST=$forge glab repo create "$repo_name" --group "$owner" --"$vis" -s 2>&1)
+      fi ;;
+    codeberg.org)
+      # fj has no --public flag: leaving off --private makes the repo public.
+      lookup_users "$forge"
+      if [ "$owner" = "$codeberg_user" ]; then
+        out=$(fj_codeberg repo create "$repo_name" ${private:+--private} 2>&1)
+      else
+        out=$(fj_codeberg org repo create "$owner" "$repo_name" ${private:+--private} 2>&1)
+      fi ;;
+  esac \
+    && log info "created repo" repo="$name" forge="$forge" path="$owner/$repo_name" visibility="$vis" \
+    || warn "couldn't create repo" repo="$name" forge="$forge" path="$owner/$repo_name" error="$out"
 }
 
 # Run jq filter $2 over every page of the paged JSON array API at $1. Output is
@@ -125,6 +186,18 @@ list_repos() {
 [ $# -eq 0 ] || { echo "usage: ${0##*/}" >&2; exit 2; }
 
 log info "sync started"
+# Every unarchived repo the owners have on each forge: create_repo skips these,
+# and the "not cloned" check after the loop reports the ones with no clone.
+forge_repos=
+for forge in github.com gitlab.com codeberg.org; do
+  for owner in "${owners[@]}"; do
+    if out=$(list_repos "$forge" "$owner" 2>&1); then
+      forge_repos+=$out$'\n'
+    else
+      warn "couldn't list repos" forge="$forge" owner="$owner" error="$out"
+    fi
+  done
+done
 cloned=
 # One .git path per pass, from the find after `done`. IFS= keeps leading/trailing
 # spaces, -r keeps backslashes, -d '' splits on NUL (find's -print0). -u 3 reads
@@ -167,6 +240,12 @@ while IFS= read -r -d '' -u 3 dotgit; do
   local_ref=refs/heads/$default
   current=$(g branch --show-current)
   before=$attention
+  # Remotes with no refs at all, like a repo create_repo just made: the push
+  # below gives them the default branch.
+  empty=
+  for r in $remotes; do
+    [ -n "$(g for-each-ref --count=1 "refs/remotes/$r/")" ] || empty+=" $r"
+  done
 
   # Collect every remote's copy of the default branch: fast-forward to each in turn.
   # Git refuses if diverged or if it would overwrite local edits.
@@ -183,15 +262,21 @@ while IFS= read -r -d '' -u 3 dotgit; do
     fi && changed=1 \
       || warn "couldn't fast-forward" repo="$name" branch="$default" remote="$r"
   done
-  [ "$found" = 1 ] || { warn "no remote has branch" repo="$name" branch="$default"; continue; }
+  # With no remote holding it, carry on only to seed empty remotes from the local copy.
+  [ "$found" = 1 ] || { [ -n "$empty" ] && g rev-parse --verify --quiet "$local_ref" >/dev/null; } \
+    || { warn "no remote has branch" repo="$name" branch="$default"; continue; }
 
-  # Push the result to every remote that's behind. A plain push is fast-forward
-  # only, so a diverged remote (already warned above) is skipped, never overwritten.
+  # Push the result to every remote that's behind or empty. A plain push is
+  # fast-forward only, so a diverged remote (already warned above) is skipped,
+  # never overwritten. A non-empty remote that lacks the branch is left alone.
   for r in $remotes; do
     ref=refs/remotes/$r/$default
-    g rev-parse --verify --quiet "$ref" >/dev/null || continue
-    [ "$(g rev-parse "$ref")" = "$(g rev-parse "$local_ref")" ] && continue
-    g merge-base --is-ancestor "$ref" "$local_ref" || continue
+    if g rev-parse --verify --quiet "$ref" >/dev/null; then
+      [ "$(g rev-parse "$ref")" = "$(g rev-parse "$local_ref")" ] && continue
+      g merge-base --is-ancestor "$ref" "$local_ref" || continue
+    else
+      case "$empty " in *" $r "*) ;; *) continue ;; esac
+    fi
     err=$(g push --quiet "$r" "$local_ref:$local_ref" 2>&1) \
       && { changed=1; log info "pushed" repo="$name" branch="$default" remote="$r"; } \
       || warn "push failed" repo="$name" branch="$default" remote="$r" error="$err"
@@ -214,16 +299,6 @@ while IFS= read -r -d '' -u 3 dotgit; do
 done 3< <(find "$HOME/git" \( -name .terraform -o -name node_modules \) -prune -o -name .git -prune -print0 \
   | LC_ALL=C sort -z)
 
-forge_repos=
-for forge in github.com gitlab.com codeberg.org; do
-  for owner in "${owners[@]}"; do
-    if out=$(list_repos "$forge" "$owner" 2>&1); then
-      forge_repos+=$out$'\n'
-    else
-      warn "couldn't list repos" forge="$forge" owner="$owner" error="$out"
-    fi
-  done
-done
 # A forge repo owner/name counts as cloned if any clone has a remote pointing
 # at owner/name on any host, or sits at ~/git/owner-name (the layout
 # check_remotes expects) or ~/git/owner/name. Matching ignores the host, so one

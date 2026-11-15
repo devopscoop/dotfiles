@@ -29,8 +29,12 @@ brew "dyff"
 brew "findutils"
 # GNU awk utility
 brew "gawk"
+# Forgejo/Codeberg command-line tool
+brew "forgejo-cli"
 # GitHub command-line tool
 brew "gh"
+# GitLab command-line tool
+brew "glab"
 # Distributed revision control system
 brew "git"
 # GNU implementation of the famous stream editor
