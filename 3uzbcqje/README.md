@@ -13,6 +13,9 @@ submodules and linked worktrees. For each repo it:
   `~/git/<owner>-<name>`, pointing at `git@<forge>:<owner>/<name>.git`. An
   `origin` on one of those forges is renamed instead. A missing `rad` remote
   can't be added, since its URL holds a repo ID; run `rad init` for that.
+- creates `<owner>/<name>` on Codeberg, GitHub or GitLab wherever it's
+  missing, using `fj`, `gh` and `glab`. Repos for `devopscoop` and `6j0-org` are
+  created public; everyone else's are private.
 - checks its remotes, and skips the repo if they're wrong: `3uzbcqje-*`,
   `6j0-org-*` and `devopscoop-*` must have exactly `codeberg`, `github`,
   `gitlab` and `rad`, each pointing at that host; `Equal-Vote/*` and `EdgeApp/*`
@@ -23,7 +26,8 @@ submodules and linked worktrees. For each repo it:
 - fetches all remotes, pruning deleted branches
 - fast-forwards the default branch to each remote's copy of it, without
   switching branches; a remote that has diverged is reported, not touched
-- pushes the default branch to every remote that is behind (never forced)
+- pushes the default branch to every remote that is behind or empty (never
+  forced)
 
 Then it lists every unarchived repo that `3uzbcqje`, `devopscoop` and `6j0-org`
 own on GitHub, GitLab and Codeberg, and reports each one that isn't cloned. A
