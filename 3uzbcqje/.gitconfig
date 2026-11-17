@@ -40,6 +40,14 @@
 [push]
 	autoSetupRemote = true
 
+# A new branch only tracks a remote branch of the same name. Radicle writes
+# push.default = upstream into every repo with a rad remote, so a branch made
+# from github/main would otherwise track main, and pushing it -- even as
+# `git push github <branch>` -- would update main. autoSetupRemote above sets
+# the upstream on the first push instead.
+[branch]
+	autoSetupMerge = simple
+
 [log]
 	showSignature = true
 
